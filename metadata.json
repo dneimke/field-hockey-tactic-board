@@ -1,0 +1,5 @@
+{
+  "name": "Field Hockey Tactical Whiteboard",
+  "description": "A digital whiteboard for creating and demonstrating field hockey tactical plays. Drag and drop players and the ball to set up formations and movements.",
+  "requestFramePermissions": []
+}
