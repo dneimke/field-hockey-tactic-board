@@ -1,31 +1,25 @@
 // Fix: Implement the main App component to serve as the entry point and state manager for the application.
-import React, {
-  useState,
-  useCallback,
-  useRef,
-  useEffect,
-  useMemo,
-} from "react";
-import Piece from "./components/Piece";
-import DrawingCanvas from "./components/DrawingCanvas";
-import Controls from "./components/Controls";
-import SaveTacticModal from "./components/SaveTacticModal";
-import LoadTacticModal from "./components/LoadTacticModal";
-import MainMenu from "./components/MainMenu";
-import { INITIAL_RED_TEAM, INITIAL_BLUE_TEAM, INITIAL_BALL } from "./constants";
-import { Player, Ball, Position, Path, Tactic, BoardState } from "./types";
-import { v4 as uuidv4 } from "uuid";
-import { useMediaQuery } from "./hooks/useMediaQuery";
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import Piece from './components/Piece';
+import DrawingCanvas from './components/DrawingCanvas';
+import Controls from './components/Controls';
+import SaveTacticModal from './components/SaveTacticModal';
+import LoadTacticModal from './components/LoadTacticModal';
+import MainMenu from './components/MainMenu';
+import { INITIAL_RED_TEAM, INITIAL_BLUE_TEAM, INITIAL_BALL } from './constants';
+import { Player, Ball, Position, Path, Tactic, BoardState } from './types';
+import { v4 as uuidv4 } from 'uuid';
+import { useMediaQuery } from './hooks/useMediaQuery';
 
-const TACTICS_STORAGE_KEY = "hockey_tactics";
+const TACTICS_STORAGE_KEY = 'hockey_tactics';
 
 const exportTacticToFile = (tactic: Tactic) => {
   const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(
-    JSON.stringify(tactic, null, 2)
+    JSON.stringify(tactic, null, 2),
   )}`;
-  const link = document.createElement("a");
+  const link = document.createElement('a');
   link.href = jsonString;
-  link.download = `${tactic.name.replace(/\s+/g, "_").toLowerCase()}.json`;
+  link.download = `${tactic.name.replace(/\s+/g, '_').toLowerCase()}.json`;
 
   // The link must be added to the DOM for the click to work in some browsers
   document.body.appendChild(link);
@@ -35,11 +29,11 @@ const exportTacticToFile = (tactic: Tactic) => {
 
 const importTacticFromFile = (
   onSuccess: (tactic: Tactic) => void,
-  onError: (error: string) => void
+  onError: (error: string) => void,
 ) => {
-  const input = document.createElement("input");
-  input.type = "file";
-  input.accept = ".json,application/json";
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json,application/json';
   input.onchange = (event) => {
     const file = (event.target as HTMLInputElement).files?.[0];
     if (!file) {
@@ -49,26 +43,26 @@ const importTacticFromFile = (
     reader.onload = (e) => {
       try {
         const text = e.target?.result;
-        if (typeof text !== "string") {
-          throw new Error("File content is not a string.");
+        if (typeof text !== 'string') {
+          throw new Error('File content is not a string.');
         }
         const tactic = JSON.parse(text);
         if (
           tactic &&
-          typeof tactic.name === "string" &&
+          typeof tactic.name === 'string' &&
           Array.isArray(tactic.frames) &&
           Array.isArray(tactic.paths)
         ) {
           onSuccess(tactic);
         } else {
-          throw new Error("Invalid tactic file format.");
+          throw new Error('Invalid tactic file format.');
         }
       } catch (err) {
         onError((err as Error).message);
       }
     };
     reader.onerror = () => {
-      onError("Failed to read the file.");
+      onError('Failed to read the file.');
     };
     reader.readAsText(file);
   };
@@ -83,10 +77,8 @@ const App: React.FC = () => {
 
   // Drawing State
   const [isDrawingMode, setIsDrawingMode] = useState(false);
-  const [drawingTool, setDrawingTool] = useState<"freehand" | "arrow">(
-    "freehand"
-  );
-  const [drawingColor] = useState("#FFFFFF");
+  const [drawingTool, setDrawingTool] = useState<'freehand' | 'arrow'>('freehand');
+  const [drawingColor] = useState('#FFFFFF');
   const [strokeWidth, setStrokeWidth] = useState(4);
 
   // Modal State
@@ -101,17 +93,13 @@ const App: React.FC = () => {
   // Animation State
   const [frames, setFrames] = useState<BoardState[]>([]);
   const [currentFrame, setCurrentFrame] = useState(0);
-  const [playbackState, setPlaybackState] = useState<"idle" | "playing">(
-    "idle"
-  );
+  const [playbackState, setPlaybackState] = useState<'idle' | 'playing'>('idle');
   const [animationSpeed, setAnimationSpeed] = useState(1);
   const animationInterval = useRef<number | null>(null);
 
   const boardRef = useRef<HTMLDivElement>(null);
 
-  const isPortrait = useMediaQuery(
-    "(orientation: portrait) and (max-width: 768px)"
-  );
+  const isPortrait = useMediaQuery('(orientation: portrait) and (max-width: 768px)');
 
   const setBoardState = useCallback((state: BoardState) => {
     setRedTeam(state.redTeam);
@@ -121,7 +109,7 @@ const App: React.FC = () => {
 
   const handlePieceMove = useCallback(
     (id: string, position: Position) => {
-      if (isDrawingMode || playbackState === "playing") return;
+      if (isDrawingMode || playbackState === 'playing') return;
 
       let finalPosition = position;
       if (isPortrait) {
@@ -132,25 +120,21 @@ const App: React.FC = () => {
         };
       }
 
-      const updatePiece = (
-        setter: React.Dispatch<React.SetStateAction<any[]>>
-      ) =>
-        setter((team) =>
-          team.map((p) => (p.id === id ? { ...p, position: finalPosition } : p))
-        );
+      const updatePiece = (setter: React.Dispatch<React.SetStateAction<Player[]>>) =>
+        setter((team) => team.map((p) => (p.id === id ? { ...p, position: finalPosition } : p)));
 
-      if (id === "ball") {
+      if (id === 'ball') {
         setBall((b) => ({ ...b, position: finalPosition }));
       } else {
         updatePiece(setRedTeam);
         updatePiece(setBlueTeam);
       }
     },
-    [isDrawingMode, playbackState, isPortrait]
+    [isDrawingMode, playbackState, isPortrait],
   );
 
   const handleAddPath = useCallback(
-    (path: Omit<Path, "id">) => {
+    (path: Omit<Path, 'id'>) => {
       let finalPath = path;
       if (isPortrait) {
         // Reverse the transformation for saving state
@@ -161,13 +145,10 @@ const App: React.FC = () => {
       }
       setPaths((prev) => [...prev, { ...finalPath, id: uuidv4() }]);
     },
-    [isPortrait]
+    [isPortrait],
   );
 
-  const undoLastPath = useCallback(
-    () => setPaths((prev) => prev.slice(0, -1)),
-    []
-  );
+  const undoLastPath = useCallback(() => setPaths((prev) => prev.slice(0, -1)), []);
   const clearAllPaths = useCallback(() => setPaths([]), []);
 
   const resetBoard = useCallback(() => {
@@ -177,7 +158,7 @@ const App: React.FC = () => {
     clearAllPaths();
     setFrames([]);
     setCurrentFrame(0);
-    setPlaybackState("idle");
+    setPlaybackState('idle');
   }, [clearAllPaths]);
 
   // Animation Handlers
@@ -193,20 +174,20 @@ const App: React.FC = () => {
         setBoardState(frames[frameIndex]);
       }
     },
-    [frames, setBoardState]
+    [frames, setBoardState],
   );
 
   const handlePlay = useCallback(() => {
     if (frames.length < 2) return;
 
-    if (playbackState === "playing") {
+    if (playbackState === 'playing') {
       // PAUSE
-      setPlaybackState("idle");
+      setPlaybackState('idle');
       if (animationInterval.current) clearInterval(animationInterval.current);
       return;
     }
 
-    setPlaybackState("playing");
+    setPlaybackState('playing');
     // If at the end, reset to the beginning before playing
     const startFrame = currentFrame >= frames.length - 1 ? 0 : currentFrame;
     if (startFrame === 0) {
@@ -218,19 +199,13 @@ const App: React.FC = () => {
       frame++;
       if (frame >= frames.length) {
         if (animationInterval.current) clearInterval(animationInterval.current);
-        setPlaybackState("idle");
+        setPlaybackState('idle');
         setCurrentFrame(frames.length - 1);
       } else {
         handleGoToFrame(frame);
       }
     }, 2250 / animationSpeed);
-  }, [
-    frames.length,
-    currentFrame,
-    playbackState,
-    handleGoToFrame,
-    animationSpeed,
-  ]);
+  }, [frames.length, currentFrame, playbackState, handleGoToFrame, animationSpeed]);
 
   useEffect(() => {
     return () => {
@@ -286,7 +261,7 @@ const App: React.FC = () => {
         setIsSaveModalOpen(false);
       }
     },
-    [redTeam, blueTeam, ball, paths, frames]
+    [redTeam, blueTeam, ball, paths, frames],
   );
 
   const handleImportTactic = useCallback((onSuccess: () => void) => {
@@ -316,7 +291,7 @@ const App: React.FC = () => {
       (error) => {
         // This could be improved with an error modal in the future
         console.error(`Error importing tactic: ${error}`);
-      }
+      },
     );
   }, []);
 
@@ -325,30 +300,24 @@ const App: React.FC = () => {
       setPaths(tactic.paths);
       setFrames(tactic.frames);
       setCurrentFrame(0);
-      setPlaybackState("idle");
+      setPlaybackState('idle');
       if (tactic.frames.length > 0) {
         setBoardState(tactic.frames[0]);
       }
       setIsLoadModalOpen(false);
     },
-    [setBoardState]
+    [setBoardState],
   );
 
-  const transformPositionForPortrait = useCallback(
-    (position: Position): Position => {
-      // Corresponds to a 90-degree clockwise rotation of the field content.
-      return {
-        x: 100 - position.y,
-        y: position.x,
-      };
-    },
-    []
-  );
+  const transformPositionForPortrait = useCallback((position: Position): Position => {
+    // Corresponds to a 90-degree clockwise rotation of the field content.
+    return {
+      x: 100 - position.y,
+      y: position.x,
+    };
+  }, []);
 
-  const allPieces = useMemo(
-    () => [...redTeam, ...blueTeam, ball],
-    [redTeam, blueTeam, ball]
-  );
+  const allPieces = useMemo(() => [...redTeam, ...blueTeam, ball], [redTeam, blueTeam, ball]);
 
   const transformedPieces = useMemo(() => {
     if (!isPortrait) return allPieces;
@@ -377,9 +346,7 @@ const App: React.FC = () => {
           className="bg-gray-800 p-8 rounded-lg shadow-xl w-full max-w-md"
           onClick={(e) => e.stopPropagation()}
         >
-          <h2 className="text-2xl font-bold mb-4 text-white">
-            Overwrite Tactic?
-          </h2>
+          <h2 className="text-2xl font-bold mb-4 text-white">Overwrite Tactic?</h2>
           <p className="text-gray-300 mb-6">{overwriteConfirm.message}</p>
           <div className="mt-6 flex justify-end gap-4">
             <button
@@ -418,12 +385,12 @@ const App: React.FC = () => {
         <div
           ref={boardRef}
           className={`relative w-full max-w-5xl border-4 border-white overflow-hidden shadow-2xl ${
-            isPortrait ? "aspect-[68/105]" : "aspect-[105/68]"
+            isPortrait ? 'aspect-[68/105]' : 'aspect-[105/68]'
           }`}
         >
           <div
             className={`absolute inset-0 bg-green-700 bg-cover bg-center bg-[url('https://storage.googleapis.com/hostinger-horizons-assets-prod/7f3aa00e-4765-4224-a301-9c51b8d05496/492a3643c0b46d7745057a94978fd3e8.webp')] transition-transform duration-300 ease-in-out
-                ${isPortrait ? "rotate-90 scale-[1.55]" : ""}`}
+                ${isPortrait ? 'rotate-90 scale-[1.55]' : ''}`}
           />
           <DrawingCanvas
             isDrawingMode={isDrawingMode}
