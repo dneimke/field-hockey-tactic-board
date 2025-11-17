@@ -1,5 +1,5 @@
 // Fix: Implement the SaveTacticModal component to provide a user interface for saving tactics.
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 
 interface SaveTacticModalProps {
   isOpen: boolean;
@@ -11,14 +11,14 @@ interface SaveTacticModalProps {
   initialValue?: string;
 }
 
-const SaveTacticModal: React.FC<SaveTacticModalProps> = ({ 
-    isOpen, 
-    onClose, 
-    onSave, 
-    title, 
-    confirmButtonText, 
-    placeholderText,
-    initialValue = ''
+const SaveTacticModal: React.FC<SaveTacticModalProps> = ({
+  isOpen,
+  onClose,
+  onSave,
+  title,
+  confirmButtonText,
+  placeholderText,
+  initialValue = "",
 }) => {
   const [tacticName, setTacticName] = useState(initialValue);
 
@@ -38,22 +38,25 @@ const SaveTacticModal: React.FC<SaveTacticModalProps> = ({
     if (tacticName.trim()) {
       onSave(tacticName.trim());
     } else {
-      alert('Please enter a name for the tactic.');
+      alert("Please enter a name for the tactic.");
     }
   };
 
   return (
-    <div 
+    <div
       className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
       onClick={onClose}
     >
-      <div 
+      <div
         className="bg-gray-800 p-8 rounded-lg shadow-xl w-full max-w-md"
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-2xl font-bold mb-6 text-white">{title}</h2>
         <form onSubmit={handleSave}>
-          <label htmlFor="tacticName" className="block text-sm font-medium text-gray-300 mb-2">
+          <label
+            htmlFor="tacticName"
+            className="block text-sm font-medium text-gray-300 mb-2"
+          >
             Tactic Name
           </label>
           <input
