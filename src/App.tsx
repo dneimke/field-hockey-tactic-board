@@ -6,10 +6,12 @@ import Controls from './components/Controls';
 import SaveTacticModal from './components/SaveTacticModal';
 import LoadTacticModal from './components/LoadTacticModal';
 import MainMenu from './components/MainMenu';
-import { INITIAL_RED_TEAM, INITIAL_BLUE_TEAM, INITIAL_BALL } from './constants';
+import CommandInput from './components/CommandInput';
+import { INITIAL_RED_TEAM, INITIAL_BLUE_TEAM, INITIAL_BALLS } from './constants';
 import { Player, Ball, Position, Path, Tactic, BoardState } from './types';
 import { v4 as uuidv4 } from 'uuid';
 import { useMediaQuery } from './hooks/useMediaQuery';
+import { useCommandExecution } from './hooks/useCommandExecution';
 
 const TACTICS_STORAGE_KEY = 'hockey_tactics';
 
@@ -72,7 +74,7 @@ const importTacticFromFile = (
 const App: React.FC = () => {
   const [redTeam, setRedTeam] = useState<Player[]>(INITIAL_RED_TEAM);
   const [blueTeam, setBlueTeam] = useState<Player[]>(INITIAL_BLUE_TEAM);
-  const [ball, setBall] = useState<Ball>(INITIAL_BALL);
+  const [balls, setBalls] = useState<Ball[]>(INITIAL_BALLS);
   const [paths, setPaths] = useState<Path[]>([]);
 
   // Drawing State
@@ -84,6 +86,7 @@ const App: React.FC = () => {
   // Modal State
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [isLoadModalOpen, setIsLoadModalOpen] = useState(false);
+  const [isCommandInputOpen, setIsCommandInputOpen] = useState(false);
   const [overwriteConfirm, setOverwriteConfirm] = useState<{
     message: string;
     onConfirm: () => void;
@@ -104,15 +107,17 @@ const App: React.FC = () => {
   const setBoardState = useCallback((state: BoardState) => {
     setRedTeam(state.redTeam);
     setBlueTeam(state.blueTeam);
-    setBall(state.ball);
+    setBalls(state.balls);
   }, []);
 
   const handlePieceMove = useCallback(
-    (id: string, position: Position) => {
+    (id: string, position: Position, isStandardCoordinates: boolean = false) => {
       if (isDrawingMode || playbackState === 'playing') return;
 
       let finalPosition = position;
-      if (isPortrait) {
+      // Only reverse transform if position is in display coordinates (from dragging)
+      // Command execution provides positions already in standard coordinates
+      if (!isStandardCoordinates && isPortrait) {
         // Reverse the transformation for saving state
         finalPosition = {
           x: position.y,
@@ -123,8 +128,16 @@ const App: React.FC = () => {
       const updatePiece = (setter: React.Dispatch<React.SetStateAction<Player[]>>) =>
         setter((team) => team.map((p) => (p.id === id ? { ...p, position: finalPosition } : p)));
 
-      if (id === 'ball') {
-        setBall((b) => ({ ...b, position: finalPosition }));
+      if (id.startsWith('ball')) {
+        setBalls((prevBalls) => {
+          const existingBall = prevBalls.find((b) => b.id === id);
+          if (existingBall) {
+            return prevBalls.map((b) => (b.id === id ? { ...b, position: finalPosition } : b));
+          } else {
+            // Create new ball
+            return [...prevBalls, { id, position: finalPosition }];
+          }
+        });
       } else {
         updatePiece(setRedTeam);
         updatePiece(setBlueTeam);
@@ -132,6 +145,10 @@ const App: React.FC = () => {
     },
     [isDrawingMode, playbackState, isPortrait],
   );
+
+  const handleResetBalls = useCallback(() => {
+    setBalls(INITIAL_BALLS);
+  }, []);
 
   const handleAddPath = useCallback(
     (path: Omit<Path, 'id'>) => {
@@ -154,7 +171,7 @@ const App: React.FC = () => {
   const resetBoard = useCallback(() => {
     setRedTeam(INITIAL_RED_TEAM);
     setBlueTeam(INITIAL_BLUE_TEAM);
-    setBall(INITIAL_BALL);
+    setBalls(INITIAL_BALLS);
     clearAllPaths();
     setFrames([]);
     setCurrentFrame(0);
@@ -163,9 +180,9 @@ const App: React.FC = () => {
 
   // Animation Handlers
   const handleAddFrame = useCallback(() => {
-    const newFrame: BoardState = { redTeam, blueTeam, ball };
+    const newFrame: BoardState = { redTeam, blueTeam, balls };
     setFrames((prev) => [...prev, newFrame]);
-  }, [redTeam, blueTeam, ball]);
+  }, [redTeam, blueTeam, balls]);
 
   const handleGoToFrame = useCallback(
     (frameIndex: number) => {
@@ -233,7 +250,7 @@ const App: React.FC = () => {
     (name: string) => {
       let framesToSave = frames;
       if (frames.length === 0) {
-        framesToSave = [{ redTeam, blueTeam, ball }];
+        framesToSave = [{ redTeam, blueTeam, balls }];
       }
 
       const newTactic: Tactic = {
@@ -261,7 +278,7 @@ const App: React.FC = () => {
         setIsSaveModalOpen(false);
       }
     },
-    [redTeam, blueTeam, ball, paths, frames],
+    [redTeam, blueTeam, balls, paths, frames],
   );
 
   const handleImportTactic = useCallback((onSuccess: () => void) => {
@@ -317,7 +334,56 @@ const App: React.FC = () => {
     };
   }, []);
 
-  const allPieces = useMemo(() => [...redTeam, ...blueTeam, ball], [redTeam, blueTeam, ball]);
+  // Board state for command execution
+  const boardState = useMemo<BoardState>(
+    () => ({
+      redTeam,
+      blueTeam,
+      balls,
+    }),
+    [redTeam, blueTeam, balls]
+  );
+
+  // Command execution hook
+  const { executeCommand, isLoading: isCommandLoading, error: commandError, lastResult, clearError } =
+    useCommandExecution({
+      boardState,
+      onPieceMove: handlePieceMove,
+      onAddFrame: handleAddFrame,
+      onResetBalls: handleResetBalls,
+    });
+
+  // Keyboard shortcut for command input
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only trigger if not typing in an input field
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        isSaveModalOpen ||
+        isLoadModalOpen
+      ) {
+        return;
+      }
+
+      // `/` key to open command input
+      if (e.key === '/' && !isCommandInputOpen) {
+        e.preventDefault();
+        setIsCommandInputOpen(true);
+      }
+
+      // Escape to close (handled in CommandInput component too)
+      if (e.key === 'Escape' && isCommandInputOpen) {
+        setIsCommandInputOpen(false);
+        clearError();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isCommandInputOpen, isSaveModalOpen, isLoadModalOpen, clearError]);
+
+  const allPieces = useMemo(() => [...redTeam, ...blueTeam, ...balls], [redTeam, blueTeam, balls]);
 
   const transformedPieces = useMemo(() => {
     if (!isPortrait) return allPieces;
@@ -375,6 +441,7 @@ const App: React.FC = () => {
         onSave={() => setIsSaveModalOpen(true)}
         onLoad={() => setIsLoadModalOpen(true)}
         onReset={resetBoard}
+        onAICommand={() => setIsCommandInputOpen(true)}
       />
 
       <h1 className="text-2xl md:text-3xl font-bold mb-2 md:mb-4 text-center">
@@ -384,9 +451,8 @@ const App: React.FC = () => {
       <div className="w-full flex-1 flex items-center justify-center">
         <div
           ref={boardRef}
-          className={`relative w-full max-w-5xl border-4 border-white overflow-hidden shadow-2xl ${
-            isPortrait ? 'aspect-[68/105]' : 'aspect-[105/68]'
-          }`}
+          className={`relative w-full max-w-5xl border-4 border-white overflow-hidden shadow-2xl ${isPortrait ? 'aspect-[68/105]' : 'aspect-[105/68]'
+            }`}
         >
           <div
             className={`absolute inset-0 bg-green-700 bg-cover bg-center bg-[url('https://storage.googleapis.com/hostinger-horizons-assets-prod/7f3aa00e-4765-4224-a301-9c51b8d05496/492a3643c0b46d7745057a94978fd3e8.webp')] transition-transform duration-300 ease-in-out
@@ -451,6 +517,18 @@ const App: React.FC = () => {
         onImport={handleImportTactic}
       />
       {renderConfirmationModal()}
+      <CommandInput
+        isVisible={isCommandInputOpen}
+        onClose={() => {
+          setIsCommandInputOpen(false);
+          clearError();
+        }}
+        onExecute={executeCommand}
+        isLoading={isCommandLoading}
+        error={commandError}
+        lastExplanation={lastResult?.explanation}
+        disabled={isDrawingMode || playbackState === 'playing'}
+      />
     </div>
   );
 };
