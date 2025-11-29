@@ -72,7 +72,7 @@ export const useCommandExecution = ({
         });
       }
     },
-    [boardState, onPieceMove, onAddFrame]
+    [boardState, onPieceMove, onAddFrame, onResetBalls]
   );
 
   const clearError = useCallback(() => {

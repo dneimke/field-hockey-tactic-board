@@ -252,7 +252,7 @@ export const interpretCommand = async (
     }
 
     return {
-      action: (aiResponse as any).action === 'reset' ? 'reset' : 'multiple',
+      action: aiResponse.action === 'reset' ? 'reset' : 'multiple',
       moves: finalMoves,
       explanation
     };
