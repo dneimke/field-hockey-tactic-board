@@ -12,7 +12,7 @@ export interface Player {
 }
 
 export interface Ball {
-  id: "ball";
+  id: string;
   position: Position;
 }
 
@@ -29,11 +29,21 @@ export interface Path {
 export interface BoardState {
   redTeam: Player[];
   blueTeam: Player[];
-  ball: Ball;
+  balls: Ball[];
 }
 
 export interface Tactic {
   name: string;
   frames: BoardState[];
   paths: Path[];
+}
+
+export interface CommandResult {
+  action: 'move' | 'formation' | 'reset' | 'ball' | 'multiple';
+  moves: Array<{
+    targetId: string; // Player ID or 'ball'
+    newPosition: Position;
+    explanation?: string;
+  }>;
+  explanation: string;
 }

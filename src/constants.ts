@@ -37,4 +37,4 @@ export const INITIAL_BLUE_TEAM: Player[] = [
   { id: "B11", team: "blue", number: 11, position: { x: 55 - 8, y: 80 } }, // FWD
 ];
 
-export const INITIAL_BALL: Ball = { id: "ball", position: { x: 48.5, y: 48 } };
+export const INITIAL_BALLS: Ball[] = [{ id: "ball", position: { x: 48.5, y: 48 } }];
