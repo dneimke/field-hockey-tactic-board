@@ -53,18 +53,15 @@ jobs:
         run: npm run build
 
       - name: Setup Firebase CLI
-        if: secrets.FIREBASE_SERVICE_ACCOUNT != ''
         run: npm install -g firebase-tools
 
       - name: Authenticate to Firebase
-        if: secrets.FIREBASE_SERVICE_ACCOUNT != ''
         env:
           FIREBASE_SERVICE_ACCOUNT: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
         run: |
           echo "$FIREBASE_SERVICE_ACCOUNT" > $HOME/firebase-service-account.json
 
       - name: Deploy to Firebase Hosting
-        if: secrets.FIREBASE_SERVICE_ACCOUNT != ''
         env:
           GOOGLE_APPLICATION_CREDENTIALS: $HOME/firebase-service-account.json
         run: |
