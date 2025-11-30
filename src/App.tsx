@@ -5,13 +5,16 @@ import DrawingCanvas from './components/DrawingCanvas';
 import Controls from './components/Controls';
 import SaveTacticModal from './components/SaveTacticModal';
 import LoadTacticModal from './components/LoadTacticModal';
-import MainMenu from './components/MainMenu';
+import HeaderToolbar from './components/HeaderToolbar';
 import CommandInput from './components/CommandInput';
-import { INITIAL_RED_TEAM, INITIAL_BLUE_TEAM, INITIAL_BALLS } from './constants';
-import { Player, Ball, Position, Path, Tactic, BoardState } from './types';
+import TeamSettingsModal from './components/TeamSettingsModal';
+import { INITIAL_RED_TEAM, INITIAL_BLUE_TEAM, INITIAL_BALLS, createGameModeTeam } from './constants';
+import { Player, Ball, Position, Path, Tactic, BoardState, FieldType } from './types';
 import { v4 as uuidv4 } from 'uuid';
 import { useMediaQuery } from './hooks/useMediaQuery';
 import { useCommandExecution } from './hooks/useCommandExecution';
+import { FIELD_CONFIGS } from './config/fieldConfig';
+import { addPlayer as addPlayerUtil, removePlayer as removePlayerUtil, validatePlayerCount, createInitialTeam } from './utils/playerManagement';
 
 const TACTICS_STORAGE_KEY = 'hockey_tactics';
 
@@ -76,6 +79,8 @@ const App: React.FC = () => {
   const [blueTeam, setBlueTeam] = useState<Player[]>(INITIAL_BLUE_TEAM);
   const [balls, setBalls] = useState<Ball[]>(INITIAL_BALLS);
   const [paths, setPaths] = useState<Path[]>([]);
+  const [mode, setMode] = useState<"game" | "training">("game");
+  const [fieldType, setFieldType] = useState<FieldType>("standard");
 
   // Drawing State
   const [isDrawingMode, setIsDrawingMode] = useState(false);
@@ -87,6 +92,7 @@ const App: React.FC = () => {
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [isLoadModalOpen, setIsLoadModalOpen] = useState(false);
   const [isCommandInputOpen, setIsCommandInputOpen] = useState(false);
+  const [isTeamSettingsModalOpen, setIsTeamSettingsModalOpen] = useState(false);
   const [overwriteConfirm, setOverwriteConfirm] = useState<{
     message: string;
     onConfirm: () => void;
@@ -105,9 +111,9 @@ const App: React.FC = () => {
   const isPortrait = useMediaQuery('(orientation: portrait) and (max-width: 768px)');
 
   const setBoardState = useCallback((state: BoardState) => {
-    setRedTeam(state.redTeam);
-    setBlueTeam(state.blueTeam);
-    setBalls(state.balls);
+    setRedTeam(Array.isArray(state.redTeam) ? state.redTeam : []);
+    setBlueTeam(Array.isArray(state.blueTeam) ? state.blueTeam : []);
+    setBalls(Array.isArray(state.balls) ? state.balls : INITIAL_BALLS);
   }, []);
 
   const handlePieceMove = useCallback(
@@ -169,14 +175,64 @@ const App: React.FC = () => {
   const clearAllPaths = useCallback(() => setPaths([]), []);
 
   const resetBoard = useCallback(() => {
-    setRedTeam(INITIAL_RED_TEAM);
-    setBlueTeam(INITIAL_BLUE_TEAM);
+    if (mode === "game") {
+      setRedTeam(INITIAL_RED_TEAM);
+      setBlueTeam(INITIAL_BLUE_TEAM);
+    } else {
+      setRedTeam(INITIAL_RED_TEAM);
+      setBlueTeam(INITIAL_BLUE_TEAM);
+    }
     setBalls(INITIAL_BALLS);
     clearAllPaths();
     setFrames([]);
     setCurrentFrame(0);
     setPlaybackState('idle');
-  }, [clearAllPaths]);
+  }, [clearAllPaths, mode]);
+
+  // Player management functions
+  const handleAddPlayer = useCallback((team: "red" | "blue") => {
+    if (mode === "game") return; // Cannot add players in game mode
+    
+    const currentTeam = team === "red" ? redTeam : blueTeam;
+    const newPlayer = addPlayerUtil(currentTeam, team);
+    const setter = team === "red" ? setRedTeam : setBlueTeam;
+    setter([...currentTeam, newPlayer]);
+  }, [mode, redTeam, blueTeam]);
+
+  const handleRemovePlayer = useCallback((playerId: string) => {
+    if (mode === "game") return; // Cannot remove players in game mode
+    
+    if (playerId.startsWith("R")) {
+      setRedTeam(removePlayerUtil(redTeam, playerId));
+    } else if (playerId.startsWith("B")) {
+      setBlueTeam(removePlayerUtil(blueTeam, playerId));
+    }
+  }, [mode, redTeam, blueTeam]);
+
+  const handleModeChange = useCallback((newMode: "game" | "training") => {
+    if (newMode === mode) return;
+    
+    if (newMode === "game") {
+      // Switching to game mode: ensure 11 players per team
+      setRedTeam(INITIAL_RED_TEAM);
+      setBlueTeam(INITIAL_BLUE_TEAM);
+    }
+    // Switching to training mode: keep current players
+    setMode(newMode);
+  }, [mode]);
+
+  const handlePresetChange = useCallback((playerCount: number) => {
+    // Switch to training mode if not already
+    if (mode !== "training") {
+      setMode("training");
+    }
+    
+    // Create teams with specified player count
+    // For presets, include goalkeepers
+    const includeGK = playerCount >= 5; // Include GK for 5v5, 7v7, 11v11
+    setRedTeam(createInitialTeam("red", playerCount, includeGK));
+    setBlueTeam(createInitialTeam("blue", playerCount, includeGK));
+  }, [mode]);
 
   // Animation Handlers
   const handleAddFrame = useCallback(() => {
@@ -257,6 +313,7 @@ const App: React.FC = () => {
         name,
         frames: framesToSave,
         paths,
+        fieldType,
       };
 
       const tacticsJson = localStorage.getItem(TACTICS_STORAGE_KEY);
@@ -315,11 +372,29 @@ const App: React.FC = () => {
   const handleLoadTactic = useCallback(
     (tactic: Tactic) => {
       setPaths(tactic.paths);
-      setFrames(tactic.frames);
+      
+      // Sanitize frames to ensure all properties exist and are arrays
+      const sanitizedFrames = tactic.frames.map(frame => ({
+        ...frame,
+        redTeam: Array.isArray(frame.redTeam) ? frame.redTeam : [],
+        blueTeam: Array.isArray(frame.blueTeam) ? frame.blueTeam : [],
+        balls: Array.isArray(frame.balls) ? frame.balls : INITIAL_BALLS
+      }));
+      
+      setFrames(sanitizedFrames);
       setCurrentFrame(0);
       setPlaybackState('idle');
-      if (tactic.frames.length > 0) {
-        setBoardState(tactic.frames[0]);
+      // Load field type if present, default to standard
+      if (tactic.fieldType) {
+        setFieldType(tactic.fieldType);
+      }
+      if (sanitizedFrames.length > 0) {
+        const firstFrame = sanitizedFrames[0];
+        setBoardState(firstFrame);
+        // Set mode from loaded frame if present
+        if (firstFrame.mode) {
+          setMode(firstFrame.mode);
+        }
       }
       setIsLoadModalOpen(false);
     },
@@ -340,17 +415,21 @@ const App: React.FC = () => {
       redTeam,
       blueTeam,
       balls,
+      mode,
     }),
-    [redTeam, blueTeam, balls]
+    [redTeam, blueTeam, balls, mode]
   );
 
   // Command execution hook
+  const currentFieldConfig = FIELD_CONFIGS[fieldType];
   const { executeCommand, isLoading: isCommandLoading, error: commandError, lastResult, clearError } =
     useCommandExecution({
       boardState,
       onPieceMove: handlePieceMove,
       onAddFrame: handleAddFrame,
       onResetBalls: handleResetBalls,
+      fieldConfig: currentFieldConfig,
+      mode,
     });
 
   // Keyboard shortcut for command input
@@ -436,69 +515,78 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="relative bg-gray-900 text-white min-h-screen flex flex-col items-center p-2 md:p-4 font-sans">
-      <MainMenu
+    <div className="relative bg-gray-900 text-white min-h-screen flex flex-col font-sans overflow-hidden">
+      <HeaderToolbar
         onSave={() => setIsSaveModalOpen(true)}
         onLoad={() => setIsLoadModalOpen(true)}
         onReset={resetBoard}
         onAICommand={() => setIsCommandInputOpen(true)}
+        fieldType={fieldType}
+        onFieldTypeChange={setFieldType}
+        mode={mode}
+        onModeChange={handleModeChange}
+        modeDescription={mode === "game" ? "11 v 11 Regulation" : "Training Session"}
+        redTeamCount={redTeam.length}
+        blueTeamCount={blueTeam.length}
+        onOpenTeamSettings={() => setIsTeamSettingsModalOpen(true)}
       />
 
-      <h1 className="text-2xl md:text-3xl font-bold mb-2 md:mb-4 text-center">
-        Field Hockey Tactic Board
-      </h1>
-
-      <div className="w-full flex-1 flex items-center justify-center">
-        <div
-          ref={boardRef}
-          className={`relative w-full max-w-5xl border-4 border-white overflow-hidden shadow-2xl ${isPortrait ? 'aspect-[68/105]' : 'aspect-[105/68]'
-            }`}
-        >
+      <div className="flex-1 flex flex-col items-center p-2 md:p-4 w-full overflow-y-auto">
+        <div className="w-full flex-1 flex items-center justify-center min-h-0">
           <div
-            className={`absolute inset-0 bg-green-700 bg-cover bg-center bg-[url('https://storage.googleapis.com/hostinger-horizons-assets-prod/7f3aa00e-4765-4224-a301-9c51b8d05496/492a3643c0b46d7745057a94978fd3e8.webp')] transition-transform duration-300 ease-in-out
-                ${isPortrait ? 'rotate-90 scale-[1.55]' : ''}`}
-          />
-          <DrawingCanvas
-            isDrawingMode={isDrawingMode}
-            drawingTool={drawingTool}
-            paths={transformedPaths}
-            onAddPath={handleAddPath}
-            color={drawingColor}
-            strokeWidth={strokeWidth / 10}
-          />
-          {transformedPieces.map((piece) => (
-            <Piece
-              key={piece.id}
-              piece={piece}
-              onMove={handlePieceMove}
-              containerRef={boardRef}
-              animationSpeed={animationSpeed}
+            ref={boardRef}
+            className={`relative w-full max-w-5xl border-4 border-white overflow-hidden shadow-2xl shrink-0 ${isPortrait ? 'aspect-[550/914]' : 'aspect-[914/550]'
+              }`}
+          >
+            <div
+              className={`absolute inset-0 bg-green-700 bg-cover bg-center transition-transform duration-300 ease-in-out
+                  ${isPortrait ? 'rotate-90 scale-[1.67]' : ''}`}
+              style={{
+                backgroundImage: `url('${currentFieldConfig.imageUrl}')`,
+              }}
             />
-          ))}
+            <DrawingCanvas
+              isDrawingMode={isDrawingMode}
+              drawingTool={drawingTool}
+              paths={transformedPaths}
+              onAddPath={handleAddPath}
+              color={drawingColor}
+              strokeWidth={strokeWidth / 10}
+            />
+            {transformedPieces.map((piece) => (
+              <Piece
+                key={piece.id}
+                piece={piece}
+                onMove={handlePieceMove}
+                containerRef={boardRef}
+                animationSpeed={animationSpeed}
+              />
+            ))}
+          </div>
         </div>
-      </div>
 
-      <div className="w-full max-w-6xl mt-auto py-2 z-40">
-        <Controls
-          isDrawingMode={isDrawingMode}
-          setIsDrawingMode={setIsDrawingMode}
-          drawingTool={drawingTool}
-          setDrawingTool={setDrawingTool}
-          strokeWidth={strokeWidth}
-          setStrokeWidth={setStrokeWidth}
-          undoLastPath={undoLastPath}
-          clearAllPaths={clearAllPaths}
-          canUndo={paths.length > 0}
-          canClear={paths.length > 0}
-          onAddFrame={handleAddFrame}
-          onPlay={handlePlay}
-          onGoToFrame={handleGoToFrame}
-          frameCount={frames.length}
-          currentFrame={currentFrame}
-          playbackState={playbackState}
-          animationSpeed={animationSpeed}
-          setAnimationSpeed={setAnimationSpeed}
-        />
+        <div className="w-full max-w-6xl mt-4 z-30">
+          <Controls
+            isDrawingMode={isDrawingMode}
+            setIsDrawingMode={setIsDrawingMode}
+            drawingTool={drawingTool}
+            setDrawingTool={setDrawingTool}
+            strokeWidth={strokeWidth}
+            setStrokeWidth={setStrokeWidth}
+            undoLastPath={undoLastPath}
+            clearAllPaths={clearAllPaths}
+            canUndo={paths.length > 0}
+            canClear={paths.length > 0}
+            onAddFrame={handleAddFrame}
+            onPlay={handlePlay}
+            onGoToFrame={handleGoToFrame}
+            frameCount={frames.length}
+            currentFrame={currentFrame}
+            playbackState={playbackState}
+            animationSpeed={animationSpeed}
+            setAnimationSpeed={setAnimationSpeed}
+          />
+        </div>
       </div>
 
       <SaveTacticModal
@@ -515,6 +603,16 @@ const App: React.FC = () => {
         onLoad={handleLoadTactic}
         onExport={exportTacticToFile}
         onImport={handleImportTactic}
+      />
+      <TeamSettingsModal
+        isOpen={isTeamSettingsModalOpen}
+        onClose={() => setIsTeamSettingsModalOpen(false)}
+        mode={mode}
+        redTeam={redTeam}
+        blueTeam={blueTeam}
+        onAddPlayer={handleAddPlayer}
+        onRemovePlayer={handleRemovePlayer}
+        onPresetChange={handlePresetChange}
       />
       {renderConfirmationModal()}
       <CommandInput

@@ -39,10 +39,21 @@ const Piece: React.FC<PieceProps> = ({ piece, onMove, containerRef, animationSpe
   const animationClasses = 'transition-all ease-in-out';
 
   let specificClasses = '';
+  let displayText: string | number = '';
+  
   if (player) {
-    const teamColor =
-      player.team === 'red' ? 'bg-red-600 border-red-800' : 'bg-blue-600 border-blue-800';
-    specificClasses = `w-6 h-6 md:w-8 md:h-8 text-white text-xs md:text-sm border-2 ${teamColor}`;
+    if (player.isGoalkeeper) {
+      // Goalkeeper: distinct color and "GK" label
+      const gkColor = 'bg-yellow-600 border-yellow-800';
+      specificClasses = `w-6 h-6 md:w-8 md:h-8 text-white text-[10px] md:text-xs border-2 ${gkColor}`;
+      displayText = 'GK';
+    } else {
+      // Regular player: team colors
+      const teamColor =
+        player.team === 'red' ? 'bg-red-600 border-red-800' : 'bg-blue-600 border-blue-800';
+      specificClasses = `w-6 h-6 md:w-8 md:h-8 text-white text-xs md:text-sm border-2 ${teamColor}`;
+      displayText = player.number;
+    }
   } else if (ball) {
     specificClasses = 'w-3 h-3 md:w-4 md:h-4 bg-white border-2 border-gray-400 z-30';
   }
@@ -60,7 +71,7 @@ const Piece: React.FC<PieceProps> = ({ piece, onMove, containerRef, animationSpe
         transitionDuration: isDragging ? '0ms' : `${transitionDuration}ms`,
       }}
     >
-      {player && <span>{player.number}</span>}
+      {player && <span>{displayText}</span>}
     </div>
   );
 };

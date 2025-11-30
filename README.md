@@ -19,6 +19,9 @@ Plan plays, animate sequences, and collaborate with your team using a modern, li
 - **Animation**: Record and playback tactical sequences with speed control.
 - **Drag & Drop**: Intuitive player and ball positioning.
 - **Save & Share**: Export tactics to JSON or save locally.
+- **Game & Training Modes**: Switch between fixed 11-player game scenarios and flexible training drills with variable player counts.
+- **Goalkeeper Differentiation**: Goalkeepers are visually distinct with "GK" label and unique color.
+- **Multiple Field Views**: Switch between standard field view and circle detail view for penalty corner tactics.
 
 ## 🚀 Quick Start
 

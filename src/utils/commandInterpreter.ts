@@ -3,6 +3,7 @@ import { functions } from '../firebase';
 import { BoardState, CommandResult, Position } from '../types';
 import { getGeminiConfig } from '../config/aiConfig';
 import { validatePosition, calculateShapePositions, ShapeConfig, resolveOverlaps } from './positionCalculator';
+import { FieldConfig } from '../config/fieldConfig';
 
 const extractJSONFromResponse = (text: string): string => {
   // Try to extract JSON from markdown code blocks
@@ -20,12 +21,74 @@ const extractJSONFromResponse = (text: string): string => {
   return text;
 };
 
-const createPrompt = (command: string, boardState: BoardState): string => {
+const createPrompt = (
+  command: string,
+  boardState: BoardState,
+  fieldConfig?: FieldConfig,
+  mode?: "game" | "training"
+): string => {
   const formations = ['4-3-3', '4-4-2', '3-5-2', '3-4-3', '5-3-2'].join(', ');
+  const currentMode = mode || boardState.mode || "game";
+  const isTrainingMode = currentMode === "training";
+  const currentFieldConfig = fieldConfig;
+
+  // Build field view context
+  const fieldViewSection = currentFieldConfig
+    ? `FIELD VIEW CONTEXT:
+- Current view: ${currentFieldConfig.name}
+- Description: ${currentFieldConfig.description}
+${currentFieldConfig.type === 'circle_detail'
+  ? `- This view emphasizes the shooting circles (D areas)
+- Focus player positioning in circle areas: Left D (x: 0-15) or Right D (x: 85-100)
+- Positions outside these areas may be less visible but are still valid`
+  : `- Full field view - all positions are visible`}
+
+`
+    : '';
+
+  // Build mode context
+  const modeSection = `MODE CONTEXT:
+- Current mode: ${currentMode === "game" ? "Game Mode" : "Training Mode"}
+${isTrainingMode
+  ? `- Training Mode: Variable player counts allowed
+- Only reference players that exist in the current board state
+- Player counts may be different from standard 11 per team`
+  : `- Game Mode: Standard 11 players per team
+- Standard formations apply`}
+
+`;
+
+  // Build board state with mode awareness
+  const boardStateSection = `CURRENT BOARD STATE:
+Red Team Players (${boardState.redTeam.length} player${boardState.redTeam.length !== 1 ? 's' : ''}):
+${boardState.redTeam.map((p) => {
+  const gkLabel = p.isGoalkeeper ? ' [GK]' : '';
+  return `  - Player ${p.number}${gkLabel} (ID: ${p.id}): Position (x: ${p.position.x}, y: ${p.position.y})`;
+}).join('\n')}
+
+Blue Team Players (${boardState.blueTeam.length} player${boardState.blueTeam.length !== 1 ? 's' : ''}):
+${boardState.blueTeam.map((p) => {
+  const gkLabel = p.isGoalkeeper ? ' [GK]' : '';
+  return `  - Player ${p.number}${gkLabel} (ID: ${p.id}): Position (x: ${p.position.x}, y: ${p.position.y})`;
+}).join('\n')}
+
+Ball Position: ${boardState.balls.map(b => `(ID: ${b.id}, x: ${b.position.x}, y: ${b.position.y})`).join(', ')}
+${isTrainingMode ? '\nNOTE: In training mode, player counts may vary. Only use player IDs that exist in the current state above.' : ''}
+
+`;
+
+  const tacticalKnowledgeSection = `TACTICAL KNOWLEDGE:
+- "Attacking Penalty Corner (APC)": Set piece attack. Injector on backline (10m from post). Castle (Battery) at top of D.
+- "Defensive Penalty Corner (DPC)": Set piece defense. GK in goal. 4 Runners (First Wave, Second Wave, etc.). Rest at halfway.
+- "Small Sided Games (SSG)": Drills like 4v2, 3v3. Usually played in a specific zone (Attacking 25, Midfield).
+- "Outlet": Moving the ball from defense to midfield. Common structures: Back 4 (dish), Back 3 (cup), Three High.
+- "Press": Defensive formation to win the ball back. Types: Full Court (high press), Half Court (zone), W-Press, Split Vision.
+- "Shootout": 1v1 vs GK starting from 23m line. FIH 8-second shootout setup.
+`;
 
   return `You are a field hockey tactic assistant. Your job is to interpret natural language commands and convert them into specific player movements on a field hockey pitch.
 
-FIELD LAYOUT:
+${fieldViewSection}FIELD LAYOUT:
 - The field uses percentage coordinates (0-100 for both x and y)
 - X-axis: 0 = left goal, 100 = right goal
 - Y-axis: 0 = top edge, 100 = bottom edge
@@ -38,16 +101,8 @@ FIELD GLOSSARY:
 - "23m Area" or "25yd Area": Zone between backline and 23m line. Left is x=0-23, Right is x=77-100.
 - "Midfield": Central area between the two 23m lines (x=23-77).
 
-CURRENT BOARD STATE:
-Red Team Players:
-${boardState.redTeam.map((p) => `  - Player ${p.number} (ID: ${p.id}): Position (x: ${p.position.x}, y: ${p.position.y})`).join('\n')}
-
-Blue Team Players:
-${boardState.blueTeam.map((p) => `  - Player ${p.number} (ID: ${p.id}): Position (x: ${p.position.x}, y: ${p.position.y})`).join('\n')}
-
-Ball Position: ${boardState.balls.map(b => `(ID: ${b.id}, x: ${b.position.x}, y: ${b.position.y})`).join(', ')}
-
-AVAILABLE FORMATIONS: ${formations}
+${tacticalKnowledgeSection}
+${modeSection}${boardStateSection}AVAILABLE FORMATIONS: ${formations}
 
 COMMAND TO INTERPRET: "${command}"
 
@@ -55,7 +110,7 @@ INSTRUCTIONS:
 1. Understand what the user wants to do
 2. Determine which players/ball need to move
 3. Calculate new positions based on tactical understanding
-4. Return a JSON object. You have three options for the structure:
+4. Return a JSON object. You have six options:
 
 TRAINING VS GAME MODE:
 - **Game Mode**: Standard match scenarios. Ensure only 1 ball is on the pitch (usually at the center or with a specific player).
@@ -113,23 +168,61 @@ OPTION C: Composite (for complex arrangements with multiple shapes or moves)
   "explanation": "overall explanation"
 }
 
+OPTION D: Set Pieces (Penalty Corners & Shootouts)
+{
+  "action": "set_piece",
+  "type": "APC" | "DPC" | "shootout",
+  "parameters": {
+    // APC Params
+    "batteries": 1 | 2,              // APC only
+    "injectorSide": "left" | "right", // APC only
+    "injectorId": "string",         // APC only (optional player ID)
+    "battery1Type": "top" | "right", // APC only
+    
+    // DPC Params
+    "defenseStructure": "1-3" | "2-2" | "line_stop", // DPC only
+    "runnerCount": number,          // DPC only (default 4)
+    
+    // Shootout Params
+    "attackerId": "string",         // Shootout only (optional, e.g., "R10")
+    "gkId": "string"                // Shootout only (optional, e.g., "B1")
+  },
+  "explanation": "overall explanation"
+}
+
+OPTION E: Drills (Small Sided Games)
+{
+  "action": "drill",
+  "type": "small_sided_game" | "possession",
+  "parameters": {
+    "attackers": number,          // Count (e.g., 4)
+    "defenders": number,          // Count (e.g., 3)
+    "withGK": boolean,            // true/false
+    "zone": "attacking_25" | "midfield" | "defensive_circle" | "full_field",
+    "shape": "wide" | "narrow"    // Optional hint
+  },
+  "explanation": "overall explanation"
+}
+
+OPTION F: Tactical Phases (Outletting & Pressing)
+{
+  "action": "tactical_phase",
+  "type": "outlet" | "press",
+  "team": "red" | "blue",
+  "structure": "string",          // Outlet: "back_4", "back_3", "three_high", "asymmetric_right", "asymmetric_left"
+                                   // Press: "full_court", "half_court", "w_press", "split_vision"
+  "intensity": number,            // Optional: 0-100 (for press height/intensity)
+  "explanation": "overall explanation"
+}
+
 EXAMPLES:
 - "Move red player 7 to center" → { "action": "move", "moves": [{ "targetId": "R7", "newPosition": { "x": 50, "y": 50 }, "explanation": "Moving to center" }], "explanation": "Moved red player 7 to center" }
 - "Form a circle with all players" → { "action": "shape", "shape": { "type": "circle", "center": { "x": 50, "y": 50 }, "radius": 30, "players": ["R1", "B1", "R2", "B2", ...] }, "explanation": "Forming a circle" }
-- "Setup 5v5 training drill" → { 
-  "action": "composite", 
-  "shapes": [
-    { "type": "grid", "center": { "x": 25, "y": 50 }, "players": ["R1", "B1", "R2", "B2", "R3", "B3", "R4", "B4", "R5", "B5"] },
-    { "type": "grid", "center": { "x": 75, "y": 50 }, "players": ["R6", "B6", "R7", "B7", "R8", "B8", "R9", "B9", "R10", "B10"] }
-  ],
-  "moves": [
-    { "targetId": "ball_1", "newPosition": { "x": 25, "y": 50 } },
-    { "targetId": "ball_2", "newPosition": { "x": 75, "y": 50 } },
-    { "targetId": "GK_R", "newPosition": { "x": 5, "y": 50 } },
-    { "targetId": "GK_B", "newPosition": { "x": 95, "y": 50 } }
-  ],
-  "explanation": "Created two 5v5 groups with a ball for each group." 
-}
+- "Setup a 2-castle PC attack" → { "action": "set_piece", "type": "APC", "parameters": { "batteries": 2 }, "explanation": "Setting up 2-battery APC" }
+- "4v2 game in the D" → { "action": "drill", "type": "small_sided_game", "parameters": { "attackers": 4, "defenders": 2, "zone": "defensive_circle" }, "explanation": "Setting up 4v2 drill in defensive circle" }
+- "Red team outlet using a Back 3" → { "action": "tactical_phase", "type": "outlet", "team": "red", "structure": "back_3", "explanation": "Setting up Back 3 outlet structure for red team" }
+- "Blue team setup a Half Court press" → { "action": "tactical_phase", "type": "press", "team": "blue", "structure": "half_court", "explanation": "Setting up Half Court press for blue team" }
+- "Shootout for R10" → { "action": "set_piece", "type": "shootout", "parameters": { "attackerId": "R10" }, "explanation": "Setting up shootout for red player 10" }
 - "Reset to match start" → { "action": "reset", "moves": [{ "targetId": "ball", "newPosition": { "x": 50, "y": 50 } }], "explanation": "Resetting to standard game mode" }
 
 IMPORTANT:
@@ -138,9 +231,11 @@ IMPORTANT:
 - Use actual player IDs from the current state
 - For "alternating" patterns, simply order the "players" array in the desired sequence (e.g., Red1, Blue1, Red2, Blue2...)
 - When creating groups (e.g. 5v5), ensure you mix players from both teams if requested.
-- Pay attention to spatial requests (e.g. "different part of field"). Goalkeepers are usually at x=5 (left) and x=95 (right), but can be moved together if requested.
+- Pay attention to spatial requests (e.g. "different part of field"). Goalkeepers (marked [GK]) are usually at x=5 (left) and x=95 (right), but can be moved together if requested.
+- Goalkeepers are visually distinct (GK label, different color) and typically remain in defensive positions unless specifically requested to move.
 - Avoid placing players on top of each other.
 - Use "ball_1", "ball_2" etc. ONLY if multiple balls are needed. Otherwise use "ball".
+${isTrainingMode ? '- IMPORTANT: In training mode, only reference player IDs that exist in the current board state. Do not assume standard player counts.' : ''}
 
 Now interpret this command: "${command}"`;
 };
@@ -154,10 +249,12 @@ type AIResponse =
 export const interpretCommand = async (
   command: string,
   boardState: BoardState,
-  modelOverride?: string
+  modelOverride?: string,
+  fieldConfig?: FieldConfig,
+  mode?: "game" | "training"
 ): Promise<CommandResult> => {
   try {
-    const prompt = createPrompt(command, boardState);
+    const prompt = createPrompt(command, boardState, fieldConfig, mode);
     const config = getGeminiConfig();
     const modelName = modelOverride || config.model;
 
@@ -179,6 +276,11 @@ export const interpretCommand = async (
     } catch (parseError) {
       console.error('Failed to parse JSON from Gemini response:', jsonText);
       throw new Error(`AI returned invalid JSON. Response: ${text.substring(0, 200)}...`);
+    }
+
+    // Handle Set Piece, Drill, and Tactical Phase Actions directly
+    if (aiResponse.action === 'set_piece' || aiResponse.action === 'drill' || aiResponse.action === 'tactical_phase') {
+      return aiResponse as CommandResult;
     }
 
     let finalMoves: Array<{ targetId: string; newPosition: Position; explanation?: string }> = [];

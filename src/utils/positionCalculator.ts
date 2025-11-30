@@ -1,5 +1,6 @@
-import { Position, Player, BoardState } from '../types';
+import { Position, Player, BoardState, SetPieceAction, DrillAction, TacticalPhaseAction } from '../types';
 import { FIELD_ZONES, getFormationPositions } from './formationDefinitions';
+import { calculateAPCPositions, calculateDPCPositions, calculateDrillPositions, getOutletPositions, getPressPositions, getShootoutPositions } from './tacticalTemplates';
 
 export const resolveFieldZone = (zone: string): Position | null => {
   const normalizedZone = zone.toLowerCase().trim();
@@ -320,4 +321,56 @@ export const calculateShapePositions = (config: ShapeConfig): Array<{ targetId: 
   }
 
   return moves;
+};
+
+export const calculateTacticalPositions = (
+  action: SetPieceAction | DrillAction | TacticalPhaseAction,
+  boardState: BoardState
+): Array<{ targetId: string; newPosition: Position; explanation?: string }> => {
+  let moves: Array<{ targetId: string; newPosition: Position }> = [];
+  const explanation = action.explanation;
+
+  // Default Assumption: Red is Attacking Team, Blue is Defending Team
+  // In a full game engine, we'd track possession.
+  const attackingTeam = boardState.redTeam;
+  const defendingTeam = boardState.blueTeam;
+  const isRightSideGoal = true; // Attacking towards Right (x=100)
+
+  if (action.action === 'set_piece') {
+    if (action.type === 'APC') {
+      // Setup Attackers for APC
+      const attackerMoves = calculateAPCPositions(action.parameters, attackingTeam, isRightSideGoal);
+      
+      // Setup Defenders for Default DPC (to ensure clean board)
+      // Even though it's an "APC" command, we need to manage the opponents
+      const defenderMoves = calculateDPCPositions({}, defendingTeam, isRightSideGoal);
+      
+      moves = [...attackerMoves, ...defenderMoves];
+    } else if (action.type === 'DPC') {
+      // Setup Defenders for DPC
+      const defenderMoves = calculateDPCPositions(action.parameters, defendingTeam, isRightSideGoal);
+      
+      // Setup Attackers for APC (to ensure clean board)
+      // Assuming standard 1 battery attack if not specified
+      const attackerMoves = calculateAPCPositions({}, attackingTeam, isRightSideGoal);
+      
+      moves = [...defenderMoves, ...attackerMoves];
+    } else if (action.type === 'shootout') {
+      // Setup Shootout positions
+      moves = getShootoutPositions(action.parameters.attackerId, action.parameters.gkId, boardState);
+    }
+  } else if (action.action === 'drill') {
+    moves = calculateDrillPositions(action.parameters, attackingTeam, defendingTeam);
+  } else if (action.action === 'tactical_phase') {
+    // Get the team players
+    const teamPlayers = action.team === 'red' ? boardState.redTeam : boardState.blueTeam;
+    
+    if (action.type === 'outlet') {
+      moves = getOutletPositions(action.structure, action.team, teamPlayers);
+    } else if (action.type === 'press') {
+      moves = getPressPositions(action.structure, action.team, teamPlayers, action.intensity);
+    }
+  }
+
+  return moves.map(m => ({ ...m, explanation: explanation || 'Tactical move' }));
 };

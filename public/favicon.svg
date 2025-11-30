@@ -1,0 +1,11 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background: Slate-900 with rounded corners -->
+  <rect x="0" y="0" width="64" height="64" rx="16" fill="#0f172a"/>
+  
+  <!-- Hockey Stick: Emerald-500 -->
+  <!-- A "J" shape representing the stick -->
+  <path d="M42 12C42 12 42 36 42 40C42 46.6274 36.6274 52 30 52H22" stroke="#10b981" stroke-width="8" stroke-linecap="round"/>
+  
+  <!-- Ball: White -->
+  <circle cx="20" cy="38" r="5" fill="white"/>
+</svg>

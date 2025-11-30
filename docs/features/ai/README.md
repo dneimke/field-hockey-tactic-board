@@ -23,8 +23,9 @@ interface Position {
 interface Player {
   id: string;           // Unique identifier (e.g., "R7" for red player 7, "B10" for blue player 10)
   team: "red" | "blue";
-  number: number;       // Jersey number (1-11)
+  number: number;       // Jersey number (varies in training mode)
   position: Position;
+  isGoalkeeper?: boolean; // true for goalkeepers (displayed as "GK" with distinct color)
 }
 
 interface Ball {
@@ -33,9 +34,10 @@ interface Ball {
 }
 
 interface BoardState {
-  redTeam: Player[];    // Array of 11 players
-  blueTeam: Player[];   // Array of 11 players
-  ball: Ball;
+  redTeam: Player[];    // Array of players (11 in game mode, variable in training mode)
+  blueTeam: Player[];  // Array of players (11 in game mode, variable in training mode)
+  balls: Ball[];       // Array of balls (typically 1 in game mode, can be multiple in training)
+  mode?: "game" | "training"; // Current mode context
 }
 ```
 
@@ -44,14 +46,61 @@ interface BoardState {
 The AI must return commands in this exact JSON structure:
 
 ```typescript
-interface CommandResult {
-  action: 'move' | 'formation' | 'reset' | 'ball' | 'multiple';
-  moves: Array<{
-    targetId: string;        // Player ID (e.g., "R7", "B10") or "ball"
-    newPosition: Position;   // { x: number, y: number }
-    explanation?: string;    // Optional explanation of the move
-  }>;
-  explanation: string;       // Overall explanation of the command execution
+type CommandResult = 
+  | {
+      action: 'move' | 'formation' | 'reset' | 'ball' | 'multiple';
+      moves: Array<{
+        targetId: string;        // Player ID (e.g., "R7", "B10") or "ball"
+        newPosition: Position;   // { x: number, y: number }
+        explanation?: string;    // Optional explanation of the move
+      }>;
+      explanation: string;       // Overall explanation of the command execution
+    }
+  | SetPieceAction
+  | DrillAction
+  | TacticalPhaseAction;
+
+interface SetPieceAction {
+  action: 'set_piece';
+  type: 'APC' | 'DPC' | 'shootout';
+  parameters: {
+    // APC Params
+    batteries?: 1 | 2;
+    injectorSide?: 'left' | 'right';
+    injectorId?: string;
+    battery1Type?: 'top' | 'right';
+    
+    // DPC Params
+    defenseStructure?: '1-3' | '2-2' | 'line_stop';
+    runnerCount?: number;
+    
+    // Shootout Params
+    attackerId?: string;        // The taker (e.g., "R10")
+    gkId?: string;               // The defending GK (e.g., "B1")
+  };
+  explanation: string;
+}
+
+interface DrillAction {
+  action: 'drill';
+  type: 'small_sided_game' | 'possession';
+  parameters: {
+    attackers: number;
+    defenders: number;
+    withGK: boolean;
+    zone: 'attacking_25' | 'midfield' | 'defensive_circle' | 'full_field';
+    shape?: 'wide' | 'narrow';
+  };
+  explanation: string;
+}
+
+interface TacticalPhaseAction {
+  action: 'tactical_phase';
+  type: 'outlet' | 'press';
+  team: 'red' | 'blue';
+  structure: string;            // Structure name (e.g., 'back_4', 'full_court', 'w_press')
+  intensity?: number;           // Optional: 0-100 (for press height/intensity)
+  explanation: string;
 }
 ```
 
@@ -61,8 +110,47 @@ interface CommandResult {
 - `reset`: Reset players to initial positions
 - `ball`: Ball movement
 - `multiple`: Complex multi-piece movement
+- `set_piece`: Penalty corners (APC/DPC) or shootouts
+- `drill`: Training drills and small-sided games
+- `tactical_phase`: Outletting and pressing structures
 
 ## Field Hockey Context
+
+### Game Mode vs Training Mode
+
+The system operates in two distinct modes:
+
+**Game Mode:**
+- Fixed 11 players per team
+- Standard formations apply
+- Single ball typically
+- Goalkeepers always present (player #1 with `isGoalkeeper: true`)
+
+**Training Mode:**
+- Variable player counts (can be any number)
+- Flexible formations based on available players
+- Multiple balls allowed for drills
+- Goalkeepers optional
+- AI must only reference players that exist in current state
+
+The AI prompt includes mode context to ensure appropriate command interpretation.
+
+### Field Types
+
+The system supports multiple field diagram views:
+
+**Standard Field View:**
+- Full field view for general tactics
+- All positions (0-100) visible and valid
+- Best for formations and overall strategy
+
+**Circle Detail View:**
+- Emphasizes shooting circles (D areas)
+- Focuses on penalty corners and circle tactics
+- AI prioritizes circle area positioning
+- Same coordinate system (0-100) but with positioning guidance
+
+The current field type is included in the AI prompt for context-aware positioning.
 
 ### Field Layout & Coordinate System
 
@@ -96,11 +184,15 @@ The field uses a **percentage-based coordinate system** (0-100 for both axes):
 - **Red Team**: Typically the "home" team, positioned on the left side
 - **Blue Team**: Typically the "away" team, positioned on the right side
 
-Both teams have 11 players:
-- 1 Goalkeeper (usually player #1)
+**Game Mode**: Both teams have 11 players:
+- 1 Goalkeeper (player #1, marked with `isGoalkeeper: true`)
 - 3-5 Defenders
 - 3-5 Midfielders
 - 1-3 Forwards
+
+**Training Mode**: Variable player counts per team (can be any number, including 0)
+- Goalkeeper is optional and identified by `isGoalkeeper: true` flag
+- Player counts are dynamic and shown in board state
 
 ### Supported Formations
 
@@ -138,13 +230,15 @@ The system supports common field hockey formations:
 
 ### Formation Position Mapping
 
-Each formation defines 11 positions in order:
-1. Goalkeeper (GK) - always at x ≈ 5, y ≈ 50
+Each formation defines 11 positions in order (Game Mode only):
+1. Goalkeeper (GK) - always at x ≈ 5, y ≈ 50, marked with `isGoalkeeper: true`
 2-5. Defenders - x ≈ 18, varying y positions
 6-10. Midfielders/Forwards - x ≈ 35-52, varying y positions
 
 **Home Team (Red):** Uses formation positions as-is
 **Away Team (Blue):** Positions are mirrored horizontally (x = 100 - formationX)
+
+**Training Mode**: Formations are flexible and adapt to current player count
 
 ### Tactical Concepts
 
@@ -157,7 +251,7 @@ Each formation defines 11 positions in order:
 - **Center**: Middle of the field (x ≈ 50, y ≈ 50)
 
 **Positional Roles:**
-- **Goalkeeper**: Stays in defensive third, typically x < 10
+- **Goalkeeper**: Stays in defensive third, typically x < 10. Visually distinct with "GK" label and different color (yellow). Identified by `isGoalkeeper: true` flag.
 - **Defenders**: Primarily in defensive third and midfield, x < 40
 - **Midfielders**: Cover midfield, x ≈ 30-60
 - **Forwards**: Primarily in attacking third, x > 50
@@ -277,15 +371,22 @@ The board supports both **portrait** and **landscape** orientations:
 ### Player Identification
 
 **Player ID Format:**
-- Red team: `R1`, `R2`, ..., `R11`
-- Blue team: `B1`, `B2`, ..., `B11`
-- Ball: `"ball"`
+- Red team: `R1`, `R2`, ..., `RN` (variable in training mode)
+- Blue team: `B1`, `B2`, ..., `BN` (variable in training mode)
+- Goalkeepers: Typically `R1` or `B1`, identified by `isGoalkeeper: true` flag
+- Ball: `"ball"` (or `"ball_2"`, `"ball_3"` etc. in training mode)
 
 **Player Reference Parsing:**
 - "red player 7" → `R7`
 - "blue player 10" → `B10`
 - "player 5" → searches both teams, uses first match
+- "goalkeeper" or "GK" → `R1` or `B1` (if exists and marked as goalkeeper)
 - Number extraction uses regex: `/\d+/`
+
+**Goalkeeper Special Handling:**
+- Goalkeepers are visually distinct: display "GK" instead of number, yellow color
+- Identified in board state with `[GK]` label
+- AI is aware of goalkeeper status and typically keeps them in defensive positions
 
 ## Command Examples
 
@@ -304,6 +405,19 @@ The board supports both **portrait** and **landscape** orientations:
 }
 ```
 
+**Command:** "Move goalkeeper to left circle" (Training Mode)
+```json
+{
+  "action": "move",
+  "moves": [{
+    "targetId": "R1",
+    "newPosition": { "x": 10, "y": 50 },
+    "explanation": "Moving goalkeeper to left shooting circle"
+  }],
+  "explanation": "Moved red goalkeeper to left shooting circle"
+}
+```
+
 **Command:** "Move blue player 10 to the attacking third"
 ```json
 {
@@ -319,7 +433,7 @@ The board supports both **portrait** and **landscape** orientations:
 
 ### Formation Commands
 
-**Command:** "Set red team to 4-4-2 formation"
+**Command:** "Set red team to 4-4-2 formation" (Game Mode)
 ```json
 {
   "action": "formation",
@@ -399,6 +513,105 @@ The board supports both **portrait** and **landscape** orientations:
 }
 ```
 
+### Outletting Structures
+
+**Command:** "Red team outlet using a Back 3"
+```json
+{
+  "action": "tactical_phase",
+  "type": "outlet",
+  "team": "red",
+  "structure": "back_3",
+  "explanation": "Setting up Back 3 outlet structure for red team"
+}
+```
+
+**Command:** "Show me a standard Back 4 outlet"
+```json
+{
+  "action": "tactical_phase",
+  "type": "outlet",
+  "team": "red",
+  "structure": "back_4",
+  "explanation": "Setting up Back 4 dish outlet structure"
+}
+```
+
+**Available Outlet Structures:**
+- `back_4`: Back 4 dish structure (CBs deep at x≈10, Fullbacks wide at x≈25)
+- `back_3`: Back 3 cup structure (Central CB high at x≈20, Side backs deep at x≈10)
+- `three_high`: Three high structure (Single deep CB at x≈10, Two high side backs at x≈40)
+- `asymmetric_right`: Asymmetric right structure (stronger right side)
+- `asymmetric_left`: Asymmetric left structure (stronger left side)
+
+### Pressing Structures
+
+**Command:** "Blue team setup a Half Court press"
+```json
+{
+  "action": "tactical_phase",
+  "type": "press",
+  "team": "blue",
+  "structure": "half_court",
+  "explanation": "Setting up Half Court press for blue team"
+}
+```
+
+**Command:** "Red team press full court"
+```json
+{
+  "action": "tactical_phase",
+  "type": "press",
+  "team": "red",
+  "structure": "full_court",
+  "intensity": 80,
+  "explanation": "Setting up Full Court press for red team"
+}
+```
+
+**Available Press Structures:**
+- `full_court`: Full court press (Man-to-man matching high, x > 75)
+- `half_court`: Half court zone (3 lines: Forward x=45, Midfield x=35, Defense x=25)
+- `w_press`: W-press structure (CF at x=60, Wingers at x=60, Inner Mids at x=50)
+- `split_vision`: Split vision press (split field, press on one side)
+
+**Press Intensity:**
+- Optional parameter (0-100) that adjusts the height of the press block
+- Higher intensity pushes players further up the field
+
+### Shootout
+
+**Command:** "Shootout for R10"
+```json
+{
+  "action": "set_piece",
+  "type": "shootout",
+  "parameters": {
+    "attackerId": "R10"
+  },
+  "explanation": "Setting up shootout for red player 10"
+}
+```
+
+**Command:** "Setup a shootout for Red player 10 against Blue goalkeeper"
+```json
+{
+  "action": "set_piece",
+  "type": "shootout",
+  "parameters": {
+    "attackerId": "R10",
+    "gkId": "B1"
+  },
+  "explanation": "Setting up shootout: R10 vs B1"
+}
+```
+
+**Shootout Rules:**
+- Attacker placed at center of 23m line (x=75 for red, x=25 for blue, y=50)
+- Goalkeeper placed on goal line (x=100 for red attacking, x=0 for blue attacking, y=50)
+- All other players moved behind center line (x=50) for isolation
+- No non-active players allowed in 23m area (x < 23 or x > 77)
+
 ## Validation Rules
 
 ### Position Validation
@@ -414,6 +627,18 @@ The board supports both **portrait** and **landscape** orientations:
 3. **Tactical Constraints:**
    - Goalkeepers should stay in defensive third (x < 33.33)
    - Violations are warned but not enforced
+
+4. **Shootout Isolation:**
+   - During a shootout action, ensure no non-active players are within the 23m area (x < 23 or x > 77)
+   - All non-active players must be behind the center line (x=50)
+
+5. **Pressing Heights:**
+   - **Full Court Press:** Forwards must be in Attacking Third (x > 66.66)
+   - **Half Court Press:** Forwards must not cross Halfway Line (x < 50)
+
+6. **Coordinate Mirroring:**
+   - Ensure outlet and press structures work correctly for both Red (left-to-right) and Blue (right-to-left) orientations
+   - Blue team positions are automatically mirrored horizontally
 
 ### Command Result Validation
 
@@ -499,7 +724,8 @@ src/
 ├── utils/
 │   ├── commandInterpreter.ts     # Gemini API integration
 │   ├── positionCalculator.ts     # Position calculation utilities
-│   └── formationDefinitions.ts   # Formation templates
+│   ├── formationDefinitions.ts   # Formation templates
+│   └── tacticalTemplates.ts      # Tactical phase templates (outlet, press, shootout)
 ├── config/
 │   └── aiConfig.ts               # API configuration
 └── types.ts                      # TypeScript type definitions
@@ -522,6 +748,18 @@ src/
 **`getFormationPositions(formationName: string, isHomeTeam: boolean): Position[]`**
 - Returns array of 11 positions for a formation
 - Handles team mirroring for away team
+
+**`getOutletPositions(structure: string, team: 'red' | 'blue', players: Player[]): Array<{targetId: string; newPosition: Position}>`**
+- Calculates positions for outlet structures (Back 4, Back 3, Three High, etc.)
+- Handles team orientation and player distribution
+
+**`getPressPositions(structure: string, team: 'red' | 'blue', players: Player[], intensity?: number): Array<{targetId: string; newPosition: Position}>`**
+- Calculates positions for pressing structures (Full Court, Half Court, W-Press, etc.)
+- Adjusts positions based on intensity parameter (0-100)
+
+**`getShootoutPositions(attackerId: string | undefined, gkId: string | undefined, boardState: BoardState): Array<{targetId: string; newPosition: Position}>`**
+- Sets up shootout positions with isolation rules
+- Moves all non-active players behind center line
 
 ## Usage Guidelines
 
@@ -556,6 +794,18 @@ src/
 - "[Team] team press high"
 - "[Team] team drop deep"
 - "[Team] team counter-attack"
+
+**Outletting:**
+- "[Team] team outlet using [structure]" (e.g., "Back 4", "Back 3", "Three High")
+- "Show me a standard [structure] outlet"
+
+**Pressing:**
+- "[Team] team press [structure]" (e.g., "full court", "half court", "W-Press")
+- "[Team] team setup a [structure] press"
+
+**Shootouts:**
+- "Shootout for [player]" (e.g., "R10", "Blue player 10")
+- "Setup a shootout for [team] player [number]"
 
 **Resets:**
 - "Reset [team] team"
@@ -598,10 +848,15 @@ src/
 ### Validation Test Cases
 
 - Positions outside 0-100 range
-- Non-existent player IDs
+- Non-existent player IDs (especially important in training mode)
 - Missing required fields in response
 - Invalid action types
 - Player overlap scenarios
+- Training mode: referencing players that don't exist
+- Game mode: player count validation (must be 11)
+- Outlet structures: testing with both teams and various player counts
+- Press structures: testing different intensities and team orientations
+- Shootout: verifying isolation rules and player positioning
 
 ## Future Enhancements
 
@@ -612,5 +867,8 @@ Potential improvements:
 - Tactical templates/pre-sets
 - Multi-language command support
 - More granular formation customization
+- Additional field types (e.g., half-field view)
+- Coordinate transformation for zoomed field views
+- Quick preset configurations for common training scenarios (5v5, 7v7, etc.)
 
 

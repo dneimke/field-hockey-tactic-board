@@ -27,6 +27,30 @@ const PromptHelp: React.FC<PromptHelpProps> = ({ isVisible, onSelectExample, onC
             ],
         },
         {
+            title: 'Outletting Structures',
+            examples: [
+                'Show me a standard Back 4 outlet',
+                'Set up a Back 3 cup structure',
+                'Red team is playing out with 3 high',
+            ],
+        },
+        {
+            title: 'Pressing Structures',
+            examples: [
+                'Blue team press full court',
+                'Drop into a Half Court zone',
+                'Set up a W-Press',
+            ],
+        },
+        {
+            title: 'Set Pieces',
+            examples: [
+                'Setup a shootout for Red player 10',
+                'Clear the board for a penalty shootout',
+                'Setup a 2-castle PC attack',
+            ],
+        },
+        {
             title: 'Shapes & Formations',
             examples: [
                 'Form a circle with all red players in the center',

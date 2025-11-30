@@ -1,0 +1,214 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { FieldType } from '../types';
+import { FIELD_CONFIGS } from '../config/fieldConfig';
+
+interface HeaderToolbarProps {
+  onSave: () => void;
+  onLoad: () => void;
+  onReset: () => void;
+  onAICommand: () => void;
+  fieldType: FieldType;
+  onFieldTypeChange: (fieldType: FieldType) => void;
+  mode: "game" | "training";
+  onModeChange: (mode: "game" | "training") => void;
+  modeDescription?: string;
+  redTeamCount: number;
+  blueTeamCount: number;
+  onOpenTeamSettings: () => void;
+}
+
+const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
+  onSave,
+  onLoad,
+  onReset,
+  onAICommand,
+  fieldType,
+  onFieldTypeChange,
+  mode,
+  onModeChange,
+  modeDescription,
+  redTeamCount,
+  blueTeamCount,
+  onOpenTeamSettings,
+}) => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleAction = (action: () => void) => {
+    action();
+    setIsMenuOpen(false);
+  };
+
+  return (
+    <header className="h-14 bg-gray-900 border-b border-gray-800 flex items-center justify-between px-4 sticky top-0 z-40 w-full shadow-md">
+      {/* Left Section: Brand & Team Stats */}
+      <div className="flex items-center gap-4">
+        <div className="flex items-center gap-1">
+          <span className="font-bold text-xl text-white tracking-tight">Tactic</span>
+          <span className="font-bold text-xl text-emerald-400 tracking-tight">Board</span>
+        </div>
+
+        <div className="h-5 w-px bg-gray-700 mx-2 hidden md:block"></div>
+
+        {/* Live Counters */}
+        <button
+          onClick={onOpenTeamSettings}
+          className="flex items-center gap-3 text-sm font-medium text-gray-300 hover:text-white transition-colors group"
+          title="Manage Teams"
+        >
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-600"></span>
+              <span>Red</span>
+              <span className="bg-gray-800 text-gray-300 px-1.5 py-0.5 rounded text-xs border border-gray-700">{redTeamCount}</span>
+            </div>
+            <span className="text-gray-600 text-xs">vs</span>
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
+              <span>Blue</span>
+              <span className="bg-gray-800 text-gray-300 px-1.5 py-0.5 rounded text-xs border border-gray-700">{blueTeamCount}</span>
+            </div>
+          </div>
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-gray-500 group-hover:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Center Section: Mode Description */}
+      <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 hidden lg:block">
+        <span className="text-gray-400 text-sm font-medium tracking-wide">
+          {modeDescription || (mode === 'game' ? '11 v 11 Regulation' : 'Training Session')}
+        </span>
+      </div>
+
+      {/* Right Section: Controls & Actions */}
+      <div className="flex items-center gap-4">
+        {/* AI Trigger */}
+        <button
+          onClick={onAICommand}
+          className="flex items-center gap-2 px-4 py-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-md text-sm font-medium shadow-lg shadow-indigo-900/20 transition-all hover:scale-105"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+          <span className="hidden md:inline">AI Copilot</span>
+        </button>
+
+        <div className="h-5 w-px bg-gray-700 hidden md:block"></div>
+
+        {/* Mode Switch - Segmented Control */}
+        <div className="bg-gray-800 rounded-lg p-1 flex border border-gray-700">
+          <button
+            onClick={() => onModeChange("game")}
+            className={`px-3 py-1 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 ${
+              mode === "game" 
+                ? "bg-gray-700 text-white shadow-sm" 
+                : "text-gray-400 hover:text-gray-200"
+            }`}
+            title="Game Mode (11v11)"
+          >
+             <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Game
+          </button>
+          <button
+            onClick={() => onModeChange("training")}
+            className={`px-3 py-1 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 ${
+              mode === "training" 
+                ? "bg-gray-700 text-white shadow-sm" 
+                : "text-gray-400 hover:text-gray-200"
+            }`}
+            title="Training Mode (Flexible)"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+            </svg>
+            Training
+          </button>
+        </div>
+
+        {/* Settings Menu */}
+        <div ref={menuRef} className="relative">
+          <button
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-md transition-colors"
+            title="Settings"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </button>
+
+          {isMenuOpen && (
+            <div className="absolute right-0 mt-2 w-56 bg-gray-800 rounded-lg shadow-xl py-2 border border-gray-700">
+              <div className="px-4 py-2 border-b border-gray-700">
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">File Operations</span>
+              </div>
+              <button
+                onClick={() => handleAction(onSave)}
+                className="w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-700 transition-colors flex items-center gap-3"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                </svg>
+                Save Tactic
+              </button>
+              <button
+                onClick={() => handleAction(onLoad)}
+                className="w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-700 transition-colors flex items-center gap-3"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                Load Tactic
+              </button>
+
+              <div className="my-1 border-t border-gray-700"></div>
+              <div className="px-4 py-2">
+                <label className="text-xs text-gray-400 mb-1.5 block">Field Configuration</label>
+                <select
+                  value={fieldType}
+                  onChange={(e) => onFieldTypeChange(e.target.value as FieldType)}
+                  className="w-full bg-gray-900 text-white text-sm rounded-md px-2 py-1.5 border border-gray-600 focus:ring-1 focus:ring-indigo-500 outline-none"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {Object.values(FIELD_CONFIGS).map((config) => (
+                    <option key={config.type} value={config.type}>
+                      {config.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="my-1 border-t border-gray-700"></div>
+              <button
+                onClick={() => handleAction(onReset)}
+                className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-900/30 hover:text-red-300 transition-colors flex items-center gap-3"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Reset Board
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+};
+
+export default HeaderToolbar;
