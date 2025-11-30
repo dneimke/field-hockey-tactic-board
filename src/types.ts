@@ -43,6 +43,27 @@ export interface Tactic {
   fieldType?: FieldType;
 }
 
+export interface SavedTactic {
+  id: string;
+  name: string;
+  tags: string[];
+  type: 'single_team' | 'full_scenario';
+  metadata?: {
+    primaryTeam?: 'red' | 'blue';
+    phase?: 'attack' | 'defense';
+    isAPC?: boolean;
+    isDPC?: boolean;
+    structure?: string;  // e.g., "back_4", "half_court", "1-3"
+  };
+  positions: {
+    team: 'red' | 'blue';
+    role: 'GK' | 'Player';
+    relativeIndex: number;
+    x: number;
+    y: number;
+  }[];
+}
+
 export interface SetPieceAction {
   action: 'set_piece';
   type: 'APC' | 'DPC' | 'shootout';

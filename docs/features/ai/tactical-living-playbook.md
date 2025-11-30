@@ -35,11 +35,18 @@ interface SavedTactic {
   id: string;           // e.g., "blue_pc_defense_v1"
   name: string;         // e.g., "PC Defense - 1-3 Box"
   tags: string[];       // ["defense", "corner", "blue"]
-  type: 'single_team' | 'full_scenario'; // NEW: Distinguish between one team or full board
+  type: 'single_team' | 'full_scenario'; // Distinguish between one team or full board
+  metadata?: {           // NEW: Explicit metadata (auto-extracted from name/tags)
+    primaryTeam?: 'red' | 'blue';
+    phase?: 'attack' | 'defense';
+    isAPC?: boolean;
+    isDPC?: boolean;
+    structure?: string;  // e.g., "back_4", "half_court", "1-3"
+  };
   
   // Map by Role or Position Index
   positions: {
-    team: 'red' | 'blue'; // NEW: Track team for full scenarios
+    team: 'red' | 'blue'; // Track team for full scenarios
     role: 'GK' | 'Player';
     relativeIndex: number; 
     x: number;
@@ -54,9 +61,22 @@ interface SavedTactic {
 
 **Logic Flow:**
 1. **Input:** "Setup PC Defense".
-2. **Search:** Check SavedTactics for fuzzy match on name.
-3. **Hit:** Load coordinates directly.
-4. **Miss:** Fallback to existing AI logic.
+2. **AI Semantic Matching:** Use AI to find the best matching tactic based on semantic understanding
+   - Analyzes command intent (team, phase, structure)
+   - Considers tactic metadata, name, and tags
+   - Handles variations and synonyms
+   - Determines if coordinate flipping is needed (same phase, opposite team)
+3. **Simple Fallback:** If AI matching fails, use basic keyword matching
+   - Filters by metadata if available
+   - Matches on name/tags keywords
+4. **Hit:** Load coordinates directly (with transformations if needed).
+5. **Miss:** Fallback to existing AI logic for generating new positions.
+
+**Benefits:**
+- Semantic understanding handles natural language variations
+- Metadata reduces inference complexity
+- Coordinate transformations handled automatically
+- Simple fallback ensures reliability
 
 ### Feature J: Smart Opponent Positioning (Auto-Antagonists)
 

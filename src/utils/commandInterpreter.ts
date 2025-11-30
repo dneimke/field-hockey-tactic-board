@@ -1,9 +1,20 @@
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../firebase';
-import { BoardState, CommandResult, Position } from '../types';
+import { BoardState, CommandResult, Position, SavedTactic } from '../types';
 import { getGeminiConfig } from '../config/aiConfig';
 import { validatePosition, calculateShapePositions, ShapeConfig, resolveOverlaps } from './positionCalculator';
 import { FieldConfig } from '../config/fieldConfig';
+import { searchTactics, savedTacticToMoves, getAllTactics, flipTacticCoordinates } from './tacticManager';
+
+// Simple in-memory cache for AI matching responses
+// Key: normalized command, Value: { result, timestamp }
+const aiMatchCache = new Map<string, { result: { tactic: SavedTactic; needsFlip: boolean; reason: string } | null; timestamp: number }>();
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+// Clear cache when tactics are saved/deleted (called from external code)
+export const clearTacticMatchCache = (): void => {
+  aiMatchCache.clear();
+};
 
 const extractJSONFromResponse = (text: string): string => {
   // Try to extract JSON from markdown code blocks
@@ -246,6 +257,273 @@ type AIResponse =
   | { action: 'shape'; shape: ShapeConfig; explanation: string }
   | { action: 'composite'; shapes?: ShapeConfig[]; moves?: Array<{ targetId: string; newPosition: Position }>; explanation: string };
 
+/**
+ * Extracts team color from command text
+ */
+const extractTeamFromCommand = (command: string): 'red' | 'blue' | null => {
+  const normalized = command.toLowerCase();
+  if (normalized.includes('red') || normalized.includes('r ')) {
+    return 'red';
+  }
+  if (normalized.includes('blue') || normalized.includes('b ')) {
+    return 'blue';
+  }
+  return null;
+};
+
+/**
+ * Extracts tactical phase from command text
+ */
+const extractPhaseFromCommand = (command: string): { type: 'attack' | 'defense' | null; isAPC: boolean; isDPC: boolean } => {
+  const normalized = command.toLowerCase();
+  const isAPC = normalized.includes('apc') || 
+                 normalized.includes('attacking') || 
+                 normalized.includes('attack') ||
+                 (normalized.includes('penalty corner') && (normalized.includes('attack') || normalized.includes('attacking')));
+  const isDPC = normalized.includes('dpc') || 
+                 normalized.includes('defending') || 
+                 normalized.includes('defense') ||
+                 (normalized.includes('penalty corner') && (normalized.includes('defend') || normalized.includes('defense')));
+  
+  let type: 'attack' | 'defense' | null = null;
+  if (isDPC || normalized.includes('defend')) {
+    type = 'defense';
+  } else if (isAPC || normalized.includes('attack')) {
+    type = 'attack';
+  }
+  
+  return { type, isAPC, isDPC };
+};
+
+/**
+ * AI-based matching: Uses AI to find the best tactic match for a command
+ * Returns the matched tactic and whether coordinates need to be flipped
+ */
+async function findTacticMatchViaAI(
+  command: string,
+  availableTactics: SavedTactic[]
+): Promise<{ tactic: SavedTactic; needsFlip: boolean; reason: string } | null> {
+  if (availableTactics.length === 0) {
+    return null;
+  }
+
+  // Check cache first
+  const normalizedCommand = command.toLowerCase().trim();
+  const cacheKey = normalizedCommand;
+  const cached = aiMatchCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    return cached.result;
+  }
+
+  try {
+    // Build prompt with command and tactic list
+    const tacticsList = availableTactics.map(t => {
+      const metadataStr = t.metadata ? JSON.stringify(t.metadata) : 'none';
+      return `- ID: "${t.id}", Name: "${t.name}", Tags: [${t.tags.join(', ')}], Type: ${t.type}, Metadata: ${metadataStr}`;
+    }).join('\n');
+
+    const prompt = `You are a field hockey tactic matching assistant. Your job is to find the best matching saved tactic for a user's command.
+
+USER COMMAND: "${command}"
+
+AVAILABLE SAVED TACTICS:
+${tacticsList}
+
+INSTRUCTIONS:
+1. Analyze the user's command to understand what they want (team, phase, structure, etc.)
+2. **CRITICAL: Only return a match if the command is clearly requesting a tactical setup that matches the saved tactic**
+3. **If the command is about drills, groups, formations, shapes, or anything unrelated to the saved tactics, return null**
+4. Find the best matching tactic from the list above (only if step 2 passes)
+5. **IMPORTANT: Determine if coordinates need to be flipped**
+   - If the command requests a team (e.g., "Blue APC") and the saved tactic is for the opposite team (e.g., "Red APC") with the SAME phase (both APC or both DPC), set needsCoordinateFlip: true
+   - Example: Command "show a blue apc" with saved "Red APC" → needsCoordinateFlip: true
+   - Example: Command "blue apc" with saved "Blue APC" → needsCoordinateFlip: false
+6. Return ONLY valid JSON, no markdown, no extra text
+
+RETURN FORMAT:
+{
+  "tacticId": "id of the best matching tactic, or null if no good match",
+  "needsCoordinateFlip": boolean,  // true if same phase but opposite team (needs coordinate flip)
+  "reason": "brief explanation of why this tactic was chosen"
+}
+
+EXAMPLES:
+- Command: "Setup Blue PC Defense" → Match: tactic with name/tags containing "blue", "dpc", "defense", needsCoordinateFlip: false
+- Command: "Red Outlet Back 4" → Match: tactic with "red", "outlet", "back_4" in name/tags/metadata, needsCoordinateFlip: false
+- Command: "Blue APC" or "show a blue apc" with saved "Red APC" → Match: "Red APC" with needsCoordinateFlip: true (opposite team, same phase)
+- Command: "Blue DPC" with saved "Red APC" → Return null (different phases, not a match)
+- Command: "Split into 3 groups" → Return null (this is a drill, not a saved tactic)
+- Command: "Form a circle" → Return null (this is a shape command, not a saved tactic)
+- Command: "Split into 3 groups of 4, each with a ball" → Return null (this is a drill command, not a saved tactic)
+
+Now analyze the command and return the best match (or null if no relevant match):`;
+
+    const config = getGeminiConfig();
+    const generateContent = httpsCallable<{ prompt: string; model: string }, { text: string }>(
+      functions,
+      'generateContent'
+    );
+
+    const aiResult = await generateContent({ prompt, model: config.model });
+    const text = aiResult.data.text;
+
+    // Extract JSON from response
+    const jsonText = extractJSONFromResponse(text);
+    const aiResponse = JSON.parse(jsonText) as {
+      tacticId: string | null;
+      needsCoordinateFlip: boolean;
+      reason: string;
+    };
+
+    if (!aiResponse.tacticId) {
+      return null;
+    }
+
+    const matchedTactic = availableTactics.find(t => t.id === aiResponse.tacticId);
+    if (!matchedTactic) {
+      console.warn('AI returned invalid tactic ID:', aiResponse.tacticId);
+      return null;
+    }
+
+    const matchResult = {
+      tactic: matchedTactic,
+      needsFlip: aiResponse.needsCoordinateFlip || false,
+      reason: aiResponse.reason || 'Matched via AI'
+    };
+
+    // Cache the result
+    aiMatchCache.set(cacheKey, {
+      result: matchResult,
+      timestamp: Date.now()
+    });
+
+    return matchResult;
+  } catch (error) {
+    console.warn('AI matching failed, falling back to simple matching:', error);
+    return null;
+  }
+}
+
+/**
+ * Simple keyword-based matching fallback
+ * Uses basic keyword matching on name/tags and filters by metadata if available
+ */
+function findTacticMatchSimple(
+  command: string,
+  tactics: SavedTactic[]
+): SavedTactic | null {
+  if (tactics.length === 0) {
+    return null;
+  }
+
+  const normalizedCommand = command.toLowerCase().trim();
+  const commandWords = normalizedCommand.split(/\s+/).filter(w => w.length > 0);
+  
+  // Filter out common stop words that shouldn't be used for matching
+  const stopWords = new Set(['a', 'an', 'the', 'with', 'of', 'into', 'each', 'and', 'or', 'for', 'to', 'in', 'on', 'at', 'by', 'is', 'are', 'was', 'were']);
+  const meaningfulWords = commandWords.filter(word => 
+    word.length > 1 && !stopWords.has(word) && !/^\d+$/.test(word) // Exclude single chars, stop words, and pure numbers
+  );
+
+  // If no meaningful words after filtering, don't match anything
+  if (meaningfulWords.length === 0) {
+    return null;
+  }
+
+  // Extract command context for filtering
+  const commandTeam = extractTeamFromCommand(normalizedCommand);
+  const commandPhase = extractPhaseFromCommand(normalizedCommand);
+
+  // Filter tactics by keyword matching
+  const keywordMatches = tactics.filter(tactic => {
+    const allText = [tactic.name, ...tactic.tags].join(' ').toLowerCase();
+    
+    // Check if at least one meaningful word matches (not just any word)
+    const hasMatch = meaningfulWords.some(word => allText.includes(word));
+    if (!hasMatch) return false;
+
+    // Filter by metadata if available
+    if (tactic.metadata) {
+      // Team filter - but allow same-phase, opposite-team matches (needs coordinate flip)
+      if (commandTeam && tactic.metadata.primaryTeam) {
+        // Same phase, opposite team = valid match (will flip coordinates)
+        const isSamePhase = commandPhase.type && tactic.metadata.phase && 
+                           commandPhase.type === tactic.metadata.phase &&
+                           ((commandPhase.isAPC && tactic.metadata.isAPC) || 
+                            (commandPhase.isDPC && tactic.metadata.isDPC));
+        
+        if (commandTeam !== tactic.metadata.primaryTeam) {
+          // Opposite team - only allow if same phase (for coordinate flipping) or full scenario
+          if (!isSamePhase && tactic.type !== 'full_scenario') {
+            return false;
+          }
+        }
+      }
+
+      // Phase filter
+      if (commandPhase.type && tactic.metadata.phase && tactic.metadata.phase !== commandPhase.type) {
+        return false;
+      }
+
+      // PC type filter
+      if (commandPhase.isAPC && tactic.metadata.isDPC) return false;
+      if (commandPhase.isDPC && tactic.metadata.isAPC) return false;
+    }
+
+    return true;
+  });
+
+  // Return first match (or null if none)
+  return keywordMatches.length > 0 ? keywordMatches[0] : null;
+}
+
+/**
+ * Searches saved tactics for a match against the command
+ * Uses AI-based semantic matching with simple keyword fallback
+ * Returns the matched tactic and whether coordinates need to be flipped
+ */
+const searchSavedTactics = async (command: string): Promise<{
+  tactic: SavedTactic;
+  needsFlip: boolean;
+} | null> => {
+  const allTactics = await getAllTactics();
+  if (allTactics.length === 0) {
+    return null;
+  }
+  
+  // Try AI matching first
+  const aiMatch = await findTacticMatchViaAI(command, allTactics);
+  if (aiMatch) {
+    return {
+      tactic: aiMatch.tactic,
+      needsFlip: aiMatch.needsFlip
+    };
+  }
+  
+  // Fallback to simple keyword matching
+  const simpleMatch = findTacticMatchSimple(command, allTactics);
+  if (simpleMatch) {
+    // Check if coordinate flip is needed (same phase, opposite team)
+    const commandTeam = extractTeamFromCommand(command.toLowerCase());
+    const commandPhase = extractPhaseFromCommand(command.toLowerCase());
+    const needsFlip = commandTeam && 
+                     simpleMatch.metadata?.primaryTeam && 
+                     commandTeam !== simpleMatch.metadata.primaryTeam &&
+                     commandPhase.type && 
+                     simpleMatch.metadata?.phase &&
+                     commandPhase.type === simpleMatch.metadata.phase &&
+                     ((commandPhase.isAPC && simpleMatch.metadata.isAPC) || 
+                      (commandPhase.isDPC && simpleMatch.metadata.isDPC));
+    
+    return {
+      tactic: simpleMatch,
+      needsFlip: needsFlip || false
+    };
+  }
+  
+  return null;
+};
+
 export const interpretCommand = async (
   command: string,
   boardState: BoardState,
@@ -254,6 +532,58 @@ export const interpretCommand = async (
   mode?: "game" | "training"
 ): Promise<CommandResult> => {
   try {
+    // Lookup First: Check saved tactics before using AI
+    const match = await searchSavedTactics(command);
+    
+    if (match) {
+      // Apply coordinate flip if needed
+      const tacticToApply = match.needsFlip 
+        ? flipTacticCoordinates(match.tactic, extractTeamFromCommand(command.toLowerCase()) || 'red')
+        : match.tactic;
+      
+      // For full_scenario tactics, always apply ALL positions (both teams)
+      // For single_team tactics, we can filter by team if specified
+      const commandTeam = extractTeamFromCommand(command.toLowerCase());
+      const teamFilter = tacticToApply.type === 'full_scenario' ? undefined : (commandTeam || undefined);
+      
+      // Convert saved tactic to moves
+      const moves = savedTacticToMoves(tacticToApply, boardState, teamFilter);
+      
+      // Validate moves
+      const allPlayers = [...boardState.redTeam, ...boardState.blueTeam, ...boardState.balls];
+      const validationErrors: string[] = [];
+      
+      for (const move of moves) {
+        if (!validatePosition(move.newPosition)) {
+          validationErrors.push(
+            `Invalid position for ${move.targetId}: (${move.newPosition.x}, ${move.newPosition.y})`
+          );
+        }
+        
+        const targetExists = allPlayers.some((p) => p.id === move.targetId);
+        if (!targetExists) {
+          validationErrors.push(`Target not found: ${move.targetId}`);
+        }
+      }
+      
+      if (validationErrors.length > 0) {
+        // If validation fails, fall through to AI
+        console.warn('Saved tactic validation failed, falling back to AI:', validationErrors);
+      } else {
+        // Return saved tactic as CommandResult
+        return {
+          action: 'multiple',
+          moves: moves.map(m => ({
+            targetId: m.targetId,
+            newPosition: m.newPosition,
+            explanation: `Loaded from saved tactic: ${match.tactic.name}`
+          })),
+          explanation: `Loaded saved tactic: ${match.tactic.name}`
+        };
+      }
+    }
+    
+    // No saved tactic found or validation failed, use AI
     const prompt = createPrompt(command, boardState, fieldConfig, mode);
     const config = getGeminiConfig();
     const modelName = modelOverride || config.model;
@@ -309,12 +639,13 @@ export const interpretCommand = async (
     // Handle Standard Action
     else {
       const commandResult = aiResponse as CommandResult;
-      // Validate the result structure
-      if (!commandResult.moves || !Array.isArray(commandResult.moves)) {
+      // Validate the result structure - check if it has moves property
+      if ('moves' in commandResult && Array.isArray(commandResult.moves)) {
+        finalMoves = commandResult.moves;
+        explanation = commandResult.explanation;
+      } else {
         throw new Error('Invalid command result structure: moves array missing');
       }
-      finalMoves = commandResult.moves;
-      explanation = commandResult.explanation;
     }
 
     // Resolve Overlaps

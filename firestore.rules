@@ -1,0 +1,35 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users can only read/write their own user document
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // Users can only read/write their own tactics
+      match /tactics/{tacticId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+        
+        // Validate tactic data structure
+        allow create: if request.auth != null 
+          && request.auth.uid == userId
+          && request.resource.data.keys().hasAll(['id', 'name', 'tags', 'type', 'positions'])
+          && request.resource.data.id is string
+          && request.resource.data.name is string
+          && request.resource.data.tags is list
+          && request.resource.data.type in ['single_team', 'full_scenario']
+          && request.resource.data.positions is list;
+        
+        allow update: if request.auth != null 
+          && request.auth.uid == userId
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'tags', 'type', 'metadata', 'updatedAt']);
+      }
+    }
+    
+    // Deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+

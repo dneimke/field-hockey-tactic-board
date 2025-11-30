@@ -53,9 +53,37 @@ In **Training Mode**, you can quickly organize players into zones.
 | **DPC** | "Setup defensive PC 2-2 structure" |
 | **Drill** | "4v2 in attacking 25" |
 
+## The Living Playbook
+
+The Living Playbook allows you to save, organize, and reuse tactical configurations. When you save a tactic, the system will automatically use your saved version instead of AI-generated positions when you enter matching commands.
+
+### Quick Start
+
+1. **Save a Tactic**: After positioning players (manually or via AI), click Settings → "Save Tactic"
+   - Give it a descriptive name
+   - Add tags for easy searching (e.g., "defense, corner, blue")
+   - Choose "Single Team" or "Full Scenario"
+
+2. **View Your Playbook**: Click Settings → "Living Playbook" to see all saved tactics
+
+3. **Automatic Loading**: When you enter a command that matches a saved tactic name, it loads automatically
+
+### Example Workflow
+
+```
+1. Enter: "Setup Blue PC Defense"
+2. AI positions players (may need correction)
+3. Drag players to correct positions
+4. Save as "Standard PC Defense" with tags: "defense, corner, blue"
+5. Next time you enter "Setup Blue PC Defense", your saved version loads instantly!
+```
+
+**For detailed information**, see the [Living Playbook Documentation](features/ai/LIVING_PLAYBOOK.md).
+
 ## Tips
 
 -   **Be Specific**: "Move R7" is better than "Move him".
 -   **Use Terminology**: The AI understands "D", "23m line", "p-spot", "castle", "injector".
 -   **Verify**: Always double-check the positions. You can drag players manually to fine-tune after the AI moves them.
+-   **Save Corrections**: If AI positioning is wrong, correct it and save to your playbook for future use.
 

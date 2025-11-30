@@ -323,6 +323,38 @@ export const calculateShapePositions = (config: ShapeConfig): Array<{ targetId: 
   return moves;
 };
 
+/**
+ * Infers the opponent's tactical phase based on the primary phase
+ * Implements smart matchup logic: Outlet ↔ Press, Attack ↔ Defense
+ */
+export const inferOpponentPhase = (
+  phase: TacticalPhaseAction
+): TacticalPhaseAction | null => {
+  const opponentTeam = phase.team === 'red' ? 'blue' : 'red';
+  
+  if (phase.type === 'outlet') {
+    // Outlet → Press (default: Half Court Zone)
+    return {
+      action: 'tactical_phase',
+      type: 'press',
+      team: opponentTeam,
+      structure: 'half_court',
+      explanation: `Auto-positioned ${opponentTeam} in Half Court Press to counter ${phase.team} outlet`
+    };
+  } else if (phase.type === 'press') {
+    // Press → Outlet (default: Back 4)
+    return {
+      action: 'tactical_phase',
+      type: 'outlet',
+      team: opponentTeam,
+      structure: 'back_4',
+      explanation: `Auto-positioned ${opponentTeam} in Back 4 Outlet to counter ${phase.team} press`
+    };
+  }
+  
+  return null;
+};
+
 export const calculateTacticalPositions = (
   action: SetPieceAction | DrillAction | TacticalPhaseAction,
   boardState: BoardState
@@ -365,10 +397,31 @@ export const calculateTacticalPositions = (
     // Get the team players
     const teamPlayers = action.team === 'red' ? boardState.redTeam : boardState.blueTeam;
     
+    // Calculate primary team positions
+    let primaryMoves: Array<{ targetId: string; newPosition: Position }> = [];
     if (action.type === 'outlet') {
-      moves = getOutletPositions(action.structure, action.team, teamPlayers);
+      primaryMoves = getOutletPositions(action.structure, action.team, teamPlayers);
     } else if (action.type === 'press') {
-      moves = getPressPositions(action.structure, action.team, teamPlayers, action.intensity);
+      primaryMoves = getPressPositions(action.structure, action.team, teamPlayers, action.intensity);
+    }
+    
+    // Smart Opponent Positioning: Auto-position opponent
+    const opponentPhase = inferOpponentPhase(action);
+    if (opponentPhase) {
+      const opponentTeam = opponentPhase.team === 'red' ? boardState.redTeam : boardState.blueTeam;
+      let opponentMoves: Array<{ targetId: string; newPosition: Position }> = [];
+      
+      if (opponentPhase.type === 'outlet') {
+        opponentMoves = getOutletPositions(opponentPhase.structure, opponentPhase.team, opponentTeam);
+      } else if (opponentPhase.type === 'press') {
+        opponentMoves = getPressPositions(opponentPhase.structure, opponentPhase.team, opponentTeam, opponentPhase.intensity);
+      }
+      
+      // Combine primary and opponent moves
+      moves = [...primaryMoves, ...opponentMoves];
+    } else {
+      // No opponent phase inferred, just use primary moves
+      moves = primaryMoves;
     }
   }
 

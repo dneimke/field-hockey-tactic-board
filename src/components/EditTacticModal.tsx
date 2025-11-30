@@ -1,33 +1,33 @@
-// Fix: Implement the SaveTacticModal component to provide a user interface for saving tactics.
 import React, { useState, useEffect, useMemo } from "react";
-import { BoardState, SavedTactic } from "../types";
+import { SavedTactic } from "../types";
 import { extractMetadataFromTags } from "../utils/tacticManager";
 
-interface SaveTacticModalProps {
+interface EditTacticModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (name: string, tags: string[], type: 'single_team' | 'full_scenario', metadata?: SavedTactic['metadata']) => void;
-  title: string;
-  confirmButtonText: string;
-  placeholderText: string;
-  initialValue?: string;
-  boardState?: BoardState;
+  onSave: (id: string, name: string, tags: string[], type: 'single_team' | 'full_scenario', metadata?: SavedTactic['metadata']) => void;
+  tactic: SavedTactic | null;
 }
 
-const SaveTacticModal: React.FC<SaveTacticModalProps> = ({
+const EditTacticModal: React.FC<EditTacticModalProps> = ({
   isOpen,
   onClose,
   onSave,
-  title,
-  confirmButtonText,
-  placeholderText,
-  initialValue = "",
-  boardState,
+  tactic,
 }) => {
-  const [tacticName, setTacticName] = useState(initialValue);
+  const [tacticName, setTacticName] = useState("");
   const [tags, setTags] = useState("");
   const [tacticType, setTacticType] = useState<'single_team' | 'full_scenario'>('full_scenario');
   const [showHelp, setShowHelp] = useState<string | null>(null);
+
+  // Initialize form when tactic changes
+  useEffect(() => {
+    if (tactic && isOpen) {
+      setTacticName(tactic.name);
+      setTags(tactic.tags.join(', '));
+      setTacticType(tactic.type);
+    }
+  }, [tactic, isOpen]);
 
   // Analyze tags for warnings
   const tagWarnings = useMemo(() => {
@@ -52,82 +52,7 @@ const SaveTacticModal: React.FC<SaveTacticModalProps> = ({
     return warnings;
   }, [tags]);
 
-  // Analyze board state for suggestions
-  const suggestions = useMemo(() => {
-    if (!boardState) return { name: '', tags: [], type: 'full_scenario' as const };
-    
-    const redCount = boardState.redTeam.length;
-    const blueCount = boardState.blueTeam.length;
-    const suggestedType = (redCount > 0 && blueCount > 0) ? 'full_scenario' : 'single_team';
-    
-    // Analyze positions to suggest name and tags
-    const suggestedTags: string[] = [];
-    let suggestedName = '';
-    
-    // Determine which team has more players (for single team tactics)
-    const primaryTeam = redCount >= blueCount ? 'red' : 'blue';
-    const primaryTeamPlayers = primaryTeam === 'red' ? boardState.redTeam : boardState.blueTeam;
-    
-    // Check for PC formations
-    // DPC: GK near goal (x close to 0 or 100), multiple players near goal line
-    // APC: Players around D arc (x around 85-100 for right goal)
-    const gk = primaryTeamPlayers.find(p => p.isGoalkeeper);
-    const playersNearGoal = primaryTeamPlayers.filter(p => {
-      const goalX = primaryTeam === 'red' ? 0 : 100;
-      return Math.abs(p.position.x - goalX) < 5 && Math.abs(p.position.y - 50) < 20;
-    });
-    const playersAtHalfway = primaryTeamPlayers.filter(p => Math.abs(p.position.x - 50) < 10);
-    
-    // DPC detection: GK in goal, 4+ players near goal line, some at halfway
-    if (gk && playersNearGoal.length >= 4 && playersAtHalfway.length > 0) {
-      suggestedName = `${primaryTeam === 'red' ? 'Red' : 'Blue'} PC Defense`;
-      suggestedTags.push(primaryTeam === 'red' ? 'red' : 'blue', 'dpc', 'defense', 'corner');
-    }
-    // APC detection: Players around D arc (x > 75 for right goal, or x < 25 for left goal)
-    else {
-      const playersInD = primaryTeamPlayers.filter(p => {
-        if (primaryTeam === 'red') {
-          return p.position.x > 75 && Math.abs(p.position.y - 50) < 30;
-        } else {
-          return p.position.x < 25 && Math.abs(p.position.y - 50) < 30;
-        }
-      });
-      if (playersInD.length >= 5) {
-        suggestedName = `${primaryTeam === 'red' ? 'Red' : 'Blue'} PC Attack`;
-        suggestedTags.push(primaryTeam === 'red' ? 'red' : 'blue', 'apc', 'attack', 'corner');
-      } else {
-        // Generic suggestion
-        suggestedName = `${primaryTeam === 'red' ? 'Red' : 'Blue'} Formation`;
-        suggestedTags.push(primaryTeam === 'red' ? 'red' : 'blue');
-      }
-    }
-    
-    return { name: suggestedName, tags: suggestedTags, type: suggestedType };
-  }, [boardState]);
-
-  // Auto-detect suggested type based on board state
-  useEffect(() => {
-    if (boardState && isOpen) {
-      setTacticType(suggestions.type);
-      if (!initialValue && suggestions.name) {
-        setTacticName(suggestions.name);
-      }
-      if (suggestions.tags.length > 0 && !tags) {
-        setTags(suggestions.tags.join(', '));
-      }
-    }
-  }, [boardState, isOpen, suggestions, initialValue, tags]);
-
-  useEffect(() => {
-    // Reset form when modal opens or initial value changes
-    if (isOpen) {
-      setTacticName(initialValue);
-      setTags("");
-      setTacticType('full_scenario');
-    }
-  }, [isOpen, initialValue]);
-
-  if (!isOpen) {
+  if (!isOpen || !tactic) {
     return null;
   }
 
@@ -143,11 +68,17 @@ const SaveTacticModal: React.FC<SaveTacticModalProps> = ({
       // Extract metadata from name and tags (auto-detection)
       const metadata = extractMetadataFromTags(tacticName.trim(), tagsArray);
       
-      onSave(tacticName.trim(), tagsArray, tacticType, metadata);
+      onSave(tactic.id, tacticName.trim(), tagsArray, tacticType, metadata);
+      onClose();
     } else {
       alert("Please enter a name for the tactic.");
     }
   };
+
+  // Determine which teams are in the tactic
+  const hasRed = tactic.positions.some(p => p.team === 'red');
+  const hasBlue = tactic.positions.some(p => p.team === 'blue');
+  const teamInfo = hasRed && hasBlue ? 'Both teams' : hasRed ? 'Red team' : hasBlue ? 'Blue team' : 'Unknown';
 
   return (
     <div
@@ -158,13 +89,16 @@ const SaveTacticModal: React.FC<SaveTacticModalProps> = ({
         className="bg-gray-800 p-8 rounded-lg shadow-xl w-full max-w-md"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-2xl font-bold mb-6 text-white">{title}</h2>
+        <h2 className="text-2xl font-bold mb-2 text-white">Edit Tactic</h2>
+        <p className="text-sm text-gray-400 mb-6">
+          Note: To change positions, load this tactic, adjust players, and save again.
+        </p>
         <form onSubmit={handleSave}>
           {/* Name Field */}
           <div className="mb-4">
             <div className="flex items-center gap-2 mb-2">
               <label
-                htmlFor="tacticName"
+                htmlFor="editTacticName"
                 className="block text-sm font-medium text-gray-300"
               >
                 Tactic Name
@@ -182,29 +116,25 @@ const SaveTacticModal: React.FC<SaveTacticModalProps> = ({
             </div>
             {showHelp === 'name' && (
               <div className="mb-2 p-2 bg-blue-900/30 border border-blue-700 rounded text-xs text-blue-200">
-                This name is used to match commands. Be specific: "Blue PC Defense - 1-3" is better than "Setup". 
-                Examples: "Blue PC Defense", "Red Outlet - Back 4", "Half Court Press"
+                This name is used to match commands. Be specific: "Blue PC Defense - 1-3" is better than "Setup".
               </div>
             )}
             <input
-              id="tacticName"
+              id="editTacticName"
               type="text"
               value={tacticName}
               onChange={(e) => setTacticName(e.target.value)}
               className="w-full bg-gray-700 text-white rounded-md p-2 border border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-              placeholder={placeholderText}
+              placeholder="e.g., Blue PC Defense"
               autoFocus
             />
-            <p className="mt-1 text-xs text-gray-400">
-              Used for command matching. Be descriptive and specific.
-            </p>
           </div>
           
           {/* Tags Field */}
           <div className="mb-4">
             <div className="flex items-center gap-2 mb-2">
               <label
-                htmlFor="tacticTags"
+                htmlFor="editTacticTags"
                 className="block text-sm font-medium text-gray-300"
               >
                 Tags (comma-separated)
@@ -224,13 +154,11 @@ const SaveTacticModal: React.FC<SaveTacticModalProps> = ({
               <div className="mb-2 p-2 bg-blue-900/30 border border-blue-700 rounded text-xs text-blue-200">
                 <strong>Important:</strong> Tag the PRIMARY team and phase this tactic is FOR, not both teams.
                 <br />
-                <strong>Examples:</strong> "blue, dpc, defense" or "red, apc, attack" or "outlet, back_4"
-                <br />
-                <strong>Don't:</strong> "red, blue, apc, dpc" (tags both teams and phases)
+                <strong>Examples:</strong> "blue, dpc, defense" or "red, apc, attack"
               </div>
             )}
             <input
-              id="tacticTags"
+              id="editTacticTags"
               type="text"
               value={tags}
               onChange={(e) => setTags(e.target.value)}
@@ -239,15 +167,6 @@ const SaveTacticModal: React.FC<SaveTacticModalProps> = ({
               } focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none`}
               placeholder="e.g., blue, dpc, defense"
             />
-            {suggestions.tags.length > 0 && !tags && (
-              <button
-                type="button"
-                onClick={() => setTags(suggestions.tags.join(', '))}
-                className="mt-1 text-xs text-indigo-400 hover:text-indigo-300 underline"
-              >
-                Use suggested: "{suggestions.tags.join(', ')}"
-              </button>
-            )}
             {tagWarnings.length > 0 && (
               <div className="mt-2 p-2 bg-yellow-900/30 border border-yellow-700 rounded text-xs text-yellow-200">
                 {tagWarnings.map((warning, idx) => (
@@ -255,9 +174,6 @@ const SaveTacticModal: React.FC<SaveTacticModalProps> = ({
                 ))}
               </div>
             )}
-            <p className="mt-1 text-xs text-gray-400">
-              Tag the team and phase this tactic is FOR. Examples: "blue, dpc" or "red, apc, attack"
-            </p>
           </div>
           
           {/* Type Field */}
@@ -279,9 +195,9 @@ const SaveTacticModal: React.FC<SaveTacticModalProps> = ({
             </div>
             {showHelp === 'type' && (
               <div className="mb-2 p-2 bg-blue-900/30 border border-blue-700 rounded text-xs text-blue-200">
-                <strong>Single Team:</strong> Saves positions for one team only (the team with more players on the board).
+                <strong>Single Team:</strong> Saves positions for one team only.
                 <br />
-                <strong>Full Scenario:</strong> Saves positions for BOTH teams (complete tactical situation with both teams positioned).
+                <strong>Full Scenario:</strong> Saves positions for BOTH teams.
               </div>
             )}
             <div className="space-y-2">
@@ -295,7 +211,7 @@ const SaveTacticModal: React.FC<SaveTacticModalProps> = ({
                 />
                 <div>
                   <span className="text-gray-300 font-medium">Single Team</span>
-                  <p className="text-xs text-gray-400 mt-1">Saves positions for one team only (the team with more players)</p>
+                  <p className="text-xs text-gray-400 mt-1">Saves positions for one team only</p>
                 </div>
               </label>
               <label className="flex items-start p-3 bg-gray-700/50 rounded-md cursor-pointer hover:bg-gray-700/70 transition-colors">
@@ -308,18 +224,13 @@ const SaveTacticModal: React.FC<SaveTacticModalProps> = ({
                 />
                 <div>
                   <span className="text-gray-300 font-medium">Full Scenario</span>
-                  <p className="text-xs text-gray-400 mt-1">Saves positions for BOTH teams (complete tactical situation)</p>
+                  <p className="text-xs text-gray-400 mt-1">Saves positions for BOTH teams</p>
                 </div>
               </label>
             </div>
-            {boardState && (
-              <p className="mt-2 text-xs text-gray-400">
-                {tacticType === 'full_scenario' 
-                  ? `Will save: Red team (${boardState.redTeam.length} players) + Blue team (${boardState.blueTeam.length} players)`
-                  : `Will save: ${boardState.redTeam.length >= boardState.blueTeam.length ? 'Red' : 'Blue'} team (${Math.max(boardState.redTeam.length, boardState.blueTeam.length)} players)`
-                }
-              </p>
-            )}
+            <p className="mt-2 text-xs text-gray-400">
+              Current tactic contains: {teamInfo} ({tactic.positions.length} positions)
+            </p>
           </div>
           
           <div className="mt-6 flex justify-end gap-4">
@@ -334,7 +245,7 @@ const SaveTacticModal: React.FC<SaveTacticModalProps> = ({
               type="submit"
               className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-md font-semibold transition-colors"
             >
-              {confirmButtonText}
+              Save Changes
             </button>
           </div>
         </form>
@@ -343,4 +254,5 @@ const SaveTacticModal: React.FC<SaveTacticModalProps> = ({
   );
 };
 
-export default SaveTacticModal;
+export default EditTacticModal;
+

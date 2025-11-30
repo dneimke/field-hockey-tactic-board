@@ -5,16 +5,22 @@ import DrawingCanvas from './components/DrawingCanvas';
 import Controls from './components/Controls';
 import SaveTacticModal from './components/SaveTacticModal';
 import LoadTacticModal from './components/LoadTacticModal';
+import PlaybookModal from './components/PlaybookModal';
+import EditTacticModal from './components/EditTacticModal';
 import HeaderToolbar from './components/HeaderToolbar';
 import CommandInput from './components/CommandInput';
 import TeamSettingsModal from './components/TeamSettingsModal';
 import { INITIAL_RED_TEAM, INITIAL_BLUE_TEAM, INITIAL_BALLS, createGameModeTeam } from './constants';
-import { Player, Ball, Position, Path, Tactic, BoardState, FieldType } from './types';
+import { Player, Ball, Position, Path, Tactic, BoardState, FieldType, SavedTactic } from './types';
 import { v4 as uuidv4 } from 'uuid';
 import { useMediaQuery } from './hooks/useMediaQuery';
 import { useCommandExecution } from './hooks/useCommandExecution';
 import { FIELD_CONFIGS } from './config/fieldConfig';
 import { addPlayer as addPlayerUtil, removePlayer as removePlayerUtil, validatePlayerCount, createInitialTeam } from './utils/playerManagement';
+import { saveTactic as saveTacticToPlaybook, savedTacticToMoves, updateTactic, setCurrentUserId } from './utils/tacticManager';
+import { subscribeToAuthState, signOutUser, getCurrentUser } from './services/authService';
+import { User } from 'firebase/auth';
+import AuthModal from './components/AuthModal';
 
 const TACTICS_STORAGE_KEY = 'hockey_tactics';
 
@@ -88,9 +94,17 @@ const App: React.FC = () => {
   const [drawingColor] = useState('#FFFFFF');
   const [strokeWidth, setStrokeWidth] = useState(4);
 
+  // Auth State
+  const [user, setUser] = useState<User | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isAuthInitializing, setIsAuthInitializing] = useState(true);
+
   // Modal State
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [isLoadModalOpen, setIsLoadModalOpen] = useState(false);
+  const [isPlaybookModalOpen, setIsPlaybookModalOpen] = useState(false);
+  const [isEditTacticModalOpen, setIsEditTacticModalOpen] = useState(false);
+  const [editingTactic, setEditingTactic] = useState<SavedTactic | null>(null);
   const [isCommandInputOpen, setIsCommandInputOpen] = useState(false);
   const [isTeamSettingsModalOpen, setIsTeamSettingsModalOpen] = useState(false);
   const [overwriteConfirm, setOverwriteConfirm] = useState<{
@@ -109,6 +123,43 @@ const App: React.FC = () => {
   const boardRef = useRef<HTMLDivElement>(null);
 
   const isPortrait = useMediaQuery('(orientation: portrait) and (max-width: 768px)');
+
+
+  // Initialize auth state and subscribe to changes
+  useEffect(() => {
+    const unsubscribe = subscribeToAuthState(async (currentUser) => {
+      setIsAuthInitializing(false);
+      setUser(currentUser);
+      setCurrentUserId(currentUser?.uid || null);
+
+      // Show auth modal if not authenticated
+      if (!currentUser) {
+        setIsAuthModalOpen(true);
+      } else {
+        setIsAuthModalOpen(false);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Handle sign out
+  const handleSignOut = useCallback(async () => {
+    try {
+      await signOutUser();
+      setUser(null);
+      setCurrentUserId(null);
+    } catch (error) {
+      console.error('Failed to sign out:', error);
+      alert('Failed to sign out. Please try again.');
+    }
+  }, []);
+
+  // Handle auth success
+  const handleAuthSuccess = useCallback(() => {
+    setIsAuthModalOpen(false);
+    // Auth state will be updated by the subscription
+  }, []);
 
   const setBoardState = useCallback((state: BoardState) => {
     setRedTeam(Array.isArray(state.redTeam) ? state.redTeam : []);
@@ -303,7 +354,18 @@ const App: React.FC = () => {
   };
 
   const handleSaveTactic = useCallback(
-    (name: string) => {
+    async (name: string, tags: string[], type: 'single_team' | 'full_scenario', metadata?: SavedTactic['metadata']) => {
+      // Save as SavedTactic for playbook lookup
+      const currentBoardState: BoardState = { redTeam, blueTeam, balls, mode };
+      try {
+        await saveTacticToPlaybook(currentBoardState, name, tags, type, metadata);
+      } catch (error) {
+        console.error('Failed to save tactic to playbook:', error);
+        alert('Failed to save tactic. Please try again.');
+        return;
+      }
+
+      // Also save as Tactic for backward compatibility (animation frames)
       let framesToSave = frames;
       if (frames.length === 0) {
         framesToSave = [{ redTeam, blueTeam, balls }];
@@ -335,7 +397,7 @@ const App: React.FC = () => {
         setIsSaveModalOpen(false);
       }
     },
-    [redTeam, blueTeam, balls, paths, frames],
+    [redTeam, blueTeam, balls, paths, frames, mode],
   );
 
   const handleImportTactic = useCallback((onSuccess: () => void) => {
@@ -418,6 +480,45 @@ const App: React.FC = () => {
       mode,
     }),
     [redTeam, blueTeam, balls, mode]
+  );
+
+  const handleLoadSavedTactic = useCallback(
+    (savedTactic: SavedTactic) => {
+      // Convert SavedTactic to moves and apply to board
+      const moves = savedTacticToMoves(savedTactic, boardState);
+      
+      // Apply each move to the board
+      moves.forEach((move) => {
+        handlePieceMove(move.targetId, move.newPosition, true);
+      });
+    },
+    [boardState, handlePieceMove]
+  );
+
+  const handleEditTactic = useCallback(
+    (tactic: SavedTactic) => {
+      setEditingTactic(tactic);
+      setIsEditTacticModalOpen(true);
+    },
+    []
+  );
+
+  const handleUpdateTactic = useCallback(
+    async (id: string, name: string, tags: string[], type: 'single_team' | 'full_scenario', metadata?: SavedTactic['metadata']) => {
+      try {
+        await updateTactic(id, { name, tags, type, metadata });
+        setIsEditTacticModalOpen(false);
+        setEditingTactic(null);
+        // Refresh playbook if it's open
+        if (isPlaybookModalOpen) {
+          // The PlaybookModal will refresh when it reopens
+        }
+      } catch (error) {
+        console.error('Failed to update tactic:', error);
+        alert('Failed to update tactic. Please try again.');
+      }
+    },
+    [isPlaybookModalOpen]
   );
 
   // Command execution hook
@@ -514,6 +615,18 @@ const App: React.FC = () => {
     );
   };
 
+  // Show loading screen while checking auth
+  if (isAuthInitializing) {
+    return (
+      <div className="relative bg-gray-900 text-white min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-white mb-4"></div>
+          <p className="text-gray-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative bg-gray-900 text-white min-h-screen flex flex-col font-sans overflow-hidden">
       <HeaderToolbar
@@ -529,8 +642,23 @@ const App: React.FC = () => {
         redTeamCount={redTeam.length}
         blueTeamCount={blueTeam.length}
         onOpenTeamSettings={() => setIsTeamSettingsModalOpen(true)}
+        onOpenPlaybook={() => setIsPlaybookModalOpen(true)}
+        user={user}
+        onOpenAuth={() => setIsAuthModalOpen(true)}
+        onSignOut={handleSignOut}
       />
 
+      {/* Block board access if not authenticated */}
+      {!user && (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-xl text-gray-400 mb-2">Authentication Required</p>
+            <p className="text-gray-500">Please sign in to use the Tactic Board</p>
+          </div>
+        </div>
+      )}
+
+      {user && (
       <div className="flex-1 flex flex-col items-center p-2 md:p-4 w-full overflow-y-auto">
         <div className="w-full flex-1 flex items-center justify-center min-h-0">
           <div
@@ -588,6 +716,7 @@ const App: React.FC = () => {
           />
         </div>
       </div>
+      )}
 
       <SaveTacticModal
         isOpen={isSaveModalOpen}
@@ -596,6 +725,7 @@ const App: React.FC = () => {
         title="Save Tactic"
         confirmButtonText="Save"
         placeholderText="e.g., High Press Formation"
+        boardState={boardState}
       />
       <LoadTacticModal
         isOpen={isLoadModalOpen}
@@ -603,6 +733,21 @@ const App: React.FC = () => {
         onLoad={handleLoadTactic}
         onExport={exportTacticToFile}
         onImport={handleImportTactic}
+      />
+      <PlaybookModal
+        isOpen={isPlaybookModalOpen}
+        onClose={() => setIsPlaybookModalOpen(false)}
+        onLoadTactic={handleLoadSavedTactic}
+        onEditTactic={handleEditTactic}
+      />
+      <EditTacticModal
+        isOpen={isEditTacticModalOpen}
+        onClose={() => {
+          setIsEditTacticModalOpen(false);
+          setEditingTactic(null);
+        }}
+        onSave={handleUpdateTactic}
+        tactic={editingTactic}
       />
       <TeamSettingsModal
         isOpen={isTeamSettingsModalOpen}
@@ -626,6 +771,12 @@ const App: React.FC = () => {
         error={commandError}
         lastExplanation={lastResult?.explanation}
         disabled={isDrawingMode || playbackState === 'playing'}
+      />
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onAuthSuccess={handleAuthSuccess}
+        required={!user} // Required if user is not authenticated
       />
     </div>
   );

@@ -53,11 +53,14 @@ export const calculateAPCPositions = (
   const goalX = isRightSideGoal ? 100 : 0;
   const forwardDir = isRightSideGoal ? -1 : 1;
   
-  // 0. Move Attacking GK (e.g., to halfway line for safety/visibility)
+  // 0. Attacking GK: Keep in goal position (do not move to center)
+  // The GK should remain in their defensive position during a PC attack
   if (gk) {
+    // Keep GK in goal (slightly off the backline for visibility)
+    const gkX = isRightSideGoal ? 95 : 5;
     moves.push({
       targetId: gk.id,
-      newPosition: { x: 50, y: 50 } // Halfway center
+      newPosition: { x: gkX, y: 50 }
     });
   }
 
@@ -68,13 +71,17 @@ export const calculateAPCPositions = (
     
   if (injectorIdx !== -1 && availableAttackers.length > 0) {
     const injector = availableAttackers[injectorIdx];
-    // 10m from post. Post is at y=47/53. 10m is approx 18 units.
-    // Standard spot is usually 10m mark.
-    // Let's just use standard y=45 or 55 for now.
-    const yPos = config.injectorSide === 'left' ? 45 : 55; 
+    // Injector should be on the backline, 10m from post
+    // Post is at y=47/53. 10m is approx 18 units.
+    // Standard spot is usually 10m mark (y=45 or y=55)
+    // Position slightly off the backline (x offset) to ensure visibility and correct placement
+    const yPos = config.injectorSide === 'left' ? 45 : 55;
+    // Position injector on backline but slightly offset to avoid appearing inside goal
+    // For right goal (x=100), place at x=99.5; for left goal (x=0), place at x=0.5
+    const injectorX = isRightSideGoal ? 99.5 : 0.5;
     moves.push({
       targetId: injector.id,
-      newPosition: { x: goalX, y: yPos }
+      newPosition: { x: injectorX, y: yPos }
     });
     availableAttackers.splice(injectorIdx, 1);
   }
@@ -194,8 +201,9 @@ export const calculateDPCPositions = (
   }
 
   // 3. Rest (Halfway)
+  // CRITICAL: Filter out the Goalkeeper when calculating the "Rest of Team" group
   const halfwayX = 50;
-  availableDefenders.forEach((p, i) => {
+  availableDefenders.filter(p => !p.isGoalkeeper).forEach((p, i) => {
     moves.push({
       targetId: p.id,
       newPosition: { x: halfwayX, y: 30 + (i * 5) }
