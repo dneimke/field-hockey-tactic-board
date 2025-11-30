@@ -61,12 +61,14 @@ jobs:
         run: |
           echo "$FIREBASE_SERVICE_ACCOUNT" > $HOME/firebase-service-account.json
           gcloud auth activate-service-account --key-file=$HOME/firebase-service-account.json
-          gcloud config set project field-hockey-tactical-whiteboard
+          gcloud config set project field-hockey-tactic-board
 
       - name: Setup Firebase CLI
         run: npm install -g firebase-tools
 
       - name: Deploy to Firebase Hosting
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: $HOME/firebase-service-account.json
         run: |
-          firebase deploy --only hosting --project field-hockey-tactical-whiteboard
+          firebase deploy --only hosting --project field-hockey-tactic-board
 

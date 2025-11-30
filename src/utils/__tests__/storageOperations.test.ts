@@ -50,9 +50,12 @@ describe('storageOperations', () => {
     });
 
     it('should handle invalid JSON gracefully', () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       localStorageMock.setItem(TACTICS_STORAGE_KEY, 'invalid json');
       const tactics = readTacticsFromStorage();
       expect(tactics).toEqual([]);
+      expect(consoleErrorSpy).toHaveBeenCalled();
+      consoleErrorSpy.mockRestore();
     });
   });
 
