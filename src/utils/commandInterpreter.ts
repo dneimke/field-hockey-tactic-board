@@ -274,7 +274,7 @@ const extractTeamFromCommand = (command: string): 'red' | 'blue' | null => {
 /**
  * Extracts tactical phase from command text
  */
-const extractPhaseFromCommand = (command: string): { type: 'attack' | 'defense' | null; isAPC: boolean; isDPC: boolean } => {
+const extractPhaseFromCommand = (command: string): { type: 'attack' | 'defense' | null; isAPC: boolean; isDPC: boolean; isOutlet?: boolean; isPress?: boolean } => {
   const normalized = command.toLowerCase();
   const isAPC = normalized.includes('apc') || 
                  normalized.includes('attacking') || 
@@ -284,16 +284,26 @@ const extractPhaseFromCommand = (command: string): { type: 'attack' | 'defense' 
                  normalized.includes('defending') || 
                  normalized.includes('defense') ||
                  (normalized.includes('penalty corner') && (normalized.includes('defend') || normalized.includes('defense')));
+  const isOutlet = normalized.includes('outlet');
+  const isPress = normalized.includes('press');
   
   let type: 'attack' | 'defense' | null = null;
   if (isDPC || normalized.includes('defend')) {
     type = 'defense';
   } else if (isAPC || normalized.includes('attack')) {
     type = 'attack';
+  } else if (isOutlet) {
+    type = 'attack';
+  } else if (isPress) {
+    type = 'defense';
   }
   
-  return { type, isAPC, isDPC };
+  return { type, isAPC, isDPC, isOutlet, isPress };
 };
+
+/**
+ * Checks if command phase and tactic phase are opposites (Outlet ↔ Press)
+ */
 
 /**
  * AI-based matching: Uses AI to find the best tactic match for a command
@@ -330,15 +340,25 @@ AVAILABLE SAVED TACTICS:
 ${tacticsList}
 
 INSTRUCTIONS:
-1. Analyze the user's command to understand what they want (team, phase, structure, etc.)
-2. **CRITICAL: Only return a match if the command is clearly requesting a tactical setup that matches the saved tactic**
-3. **If the command is about drills, groups, formations, shapes, or anything unrelated to the saved tactics, return null**
-4. Find the best matching tactic from the list above (only if step 2 passes)
-5. **IMPORTANT: Determine if coordinates need to be flipped**
+1. **FIRST: Determine if this is a drill or training exercise command**
+   - Drill indicators: "split", "groups", "drill", "small sided", "5v5", "4v4", "3v3", "possession", "exercise"
+   - Commands about creating multiple teams/groups for practice
+   - Commands requesting training scenarios or exercises
+   - **CRITICAL: If this is a drill command, return null immediately - drills should NEVER match saved tactics**
+   - Drills and saved tactics are fundamentally different: drills are training exercises, tactics are game scenarios
+2. Analyze the user's command to understand what they want (team, phase, structure, etc.)
+3. **CRITICAL: Only return a match if the command is clearly requesting a tactical setup that matches the saved tactic**
+4. **NEVER match drill commands - they are fundamentally different from saved tactics**
+5. Find the best matching tactic from the list above (only if steps 1-3 pass)
+6. **IMPORTANT: Determine if coordinates need to be flipped**
    - If the command requests a team (e.g., "Blue APC") and the saved tactic is for the opposite team (e.g., "Red APC") with the SAME phase (both APC or both DPC), set needsCoordinateFlip: true
    - Example: Command "show a blue apc" with saved "Red APC" → needsCoordinateFlip: true
    - Example: Command "blue apc" with saved "Blue APC" → needsCoordinateFlip: false
-6. Return ONLY valid JSON, no markdown, no extra text
+7. **OUTLET ↔ PRESS OPPOSITES**: Outlet and Press are tactical opposites
+   - A command for "press" can match a saved "outlet" tactic (and vice versa) IF it's a full scenario
+   - Example: Command "Blue press" → Match: saved "Red Outlet" full scenario (no coordinate flip needed, applies as-is)
+   - Example: Command "Red outlet" → Match: saved "Blue Press" full scenario (no coordinate flip needed, applies as-is)
+8. Return ONLY valid JSON, no markdown, no extra text
 
 RETURN FORMAT:
 {
@@ -352,9 +372,14 @@ EXAMPLES:
 - Command: "Red Outlet Back 4" → Match: tactic with "red", "outlet", "back_4" in name/tags/metadata, needsCoordinateFlip: false
 - Command: "Blue APC" or "show a blue apc" with saved "Red APC" → Match: "Red APC" with needsCoordinateFlip: true (opposite team, same phase)
 - Command: "Blue DPC" with saved "Red APC" → Return null (different phases, not a match)
+- Command: "Blue press" with saved "Red Outlet" full scenario → Match: "Red Outlet" with needsCoordinateFlip: false (opposite phase, full scenario applies as-is)
+- Command: "Red outlet" with saved "Blue Press" full scenario → Match: "Blue Press" with needsCoordinateFlip: false (opposite phase, full scenario applies as-is)
 - Command: "Split into 3 groups" → Return null (this is a drill, not a saved tactic)
+- Command: "Split into 3 groups of 4, each with a ball" → Return null (this is a drill command, drills NEVER match tactics)
+- Command: "Setup 2 small sided games (5v5) red vs blue" → Return null (this is a drill command with multiple groups, NOT a tactic)
 - Command: "Form a circle" → Return null (this is a shape command, not a saved tactic)
-- Command: "Split into 3 groups of 4, each with a ball" → Return null (this is a drill command, not a saved tactic)
+- Command: "4v2 game in the D" → Return null (this is a drill, not a saved tactic)
+- Command: "Create 3 groups for possession drill" → Return null (this is a drill, drills NEVER match tactics)
 
 Now analyze the command and return the best match (or null if no relevant match):`;
 
@@ -399,87 +424,15 @@ Now analyze the command and return the best match (or null if no relevant match)
 
     return matchResult;
   } catch (error) {
-    console.warn('AI matching failed, falling back to simple matching:', error);
+    console.warn('AI matching failed:', error);
     return null;
   }
 }
 
-/**
- * Simple keyword-based matching fallback
- * Uses basic keyword matching on name/tags and filters by metadata if available
- */
-function findTacticMatchSimple(
-  command: string,
-  tactics: SavedTactic[]
-): SavedTactic | null {
-  if (tactics.length === 0) {
-    return null;
-  }
-
-  const normalizedCommand = command.toLowerCase().trim();
-  const commandWords = normalizedCommand.split(/\s+/).filter(w => w.length > 0);
-  
-  // Filter out common stop words that shouldn't be used for matching
-  const stopWords = new Set(['a', 'an', 'the', 'with', 'of', 'into', 'each', 'and', 'or', 'for', 'to', 'in', 'on', 'at', 'by', 'is', 'are', 'was', 'were']);
-  const meaningfulWords = commandWords.filter(word => 
-    word.length > 1 && !stopWords.has(word) && !/^\d+$/.test(word) // Exclude single chars, stop words, and pure numbers
-  );
-
-  // If no meaningful words after filtering, don't match anything
-  if (meaningfulWords.length === 0) {
-    return null;
-  }
-
-  // Extract command context for filtering
-  const commandTeam = extractTeamFromCommand(normalizedCommand);
-  const commandPhase = extractPhaseFromCommand(normalizedCommand);
-
-  // Filter tactics by keyword matching
-  const keywordMatches = tactics.filter(tactic => {
-    const allText = [tactic.name, ...tactic.tags].join(' ').toLowerCase();
-    
-    // Check if at least one meaningful word matches (not just any word)
-    const hasMatch = meaningfulWords.some(word => allText.includes(word));
-    if (!hasMatch) return false;
-
-    // Filter by metadata if available
-    if (tactic.metadata) {
-      // Team filter - but allow same-phase, opposite-team matches (needs coordinate flip)
-      if (commandTeam && tactic.metadata.primaryTeam) {
-        // Same phase, opposite team = valid match (will flip coordinates)
-        const isSamePhase = commandPhase.type && tactic.metadata.phase && 
-                           commandPhase.type === tactic.metadata.phase &&
-                           ((commandPhase.isAPC && tactic.metadata.isAPC) || 
-                            (commandPhase.isDPC && tactic.metadata.isDPC));
-        
-        if (commandTeam !== tactic.metadata.primaryTeam) {
-          // Opposite team - only allow if same phase (for coordinate flipping) or full scenario
-          if (!isSamePhase && tactic.type !== 'full_scenario') {
-            return false;
-          }
-        }
-      }
-
-      // Phase filter
-      if (commandPhase.type && tactic.metadata.phase && tactic.metadata.phase !== commandPhase.type) {
-        return false;
-      }
-
-      // PC type filter
-      if (commandPhase.isAPC && tactic.metadata.isDPC) return false;
-      if (commandPhase.isDPC && tactic.metadata.isAPC) return false;
-    }
-
-    return true;
-  });
-
-  // Return first match (or null if none)
-  return keywordMatches.length > 0 ? keywordMatches[0] : null;
-}
 
 /**
  * Searches saved tactics for a match against the command
- * Uses AI-based semantic matching with simple keyword fallback
+ * Uses AI-based semantic matching only
  * Returns the matched tactic and whether coordinates need to be flipped
  */
 const searchSavedTactics = async (command: string): Promise<{
@@ -491,7 +444,7 @@ const searchSavedTactics = async (command: string): Promise<{
     return null;
   }
   
-  // Try AI matching first
+  // Use AI matching only - AI is best at understanding intent and detecting drills
   const aiMatch = await findTacticMatchViaAI(command, allTactics);
   if (aiMatch) {
     return {
@@ -500,27 +453,8 @@ const searchSavedTactics = async (command: string): Promise<{
     };
   }
   
-  // Fallback to simple keyword matching
-  const simpleMatch = findTacticMatchSimple(command, allTactics);
-  if (simpleMatch) {
-    // Check if coordinate flip is needed (same phase, opposite team)
-    const commandTeam = extractTeamFromCommand(command.toLowerCase());
-    const commandPhase = extractPhaseFromCommand(command.toLowerCase());
-    const needsFlip = commandTeam && 
-                     simpleMatch.metadata?.primaryTeam && 
-                     commandTeam !== simpleMatch.metadata.primaryTeam &&
-                     commandPhase.type && 
-                     simpleMatch.metadata?.phase &&
-                     commandPhase.type === simpleMatch.metadata.phase &&
-                     ((commandPhase.isAPC && simpleMatch.metadata.isAPC) || 
-                      (commandPhase.isDPC && simpleMatch.metadata.isDPC));
-    
-    return {
-      tactic: simpleMatch,
-      needsFlip: needsFlip || false
-    };
-  }
-  
+  // If AI doesn't find a match, return null and let the command go to full AI interpretation
+  // This ensures we don't get false positives from keyword matching
   return null;
 };
 

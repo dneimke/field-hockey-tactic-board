@@ -65,18 +65,16 @@ interface SavedTactic {
    - Analyzes command intent (team, phase, structure)
    - Considers tactic metadata, name, and tags
    - Handles variations and synonyms
+   - Automatically detects drill commands and returns null (drills never match tactics)
    - Determines if coordinate flipping is needed (same phase, opposite team)
-3. **Simple Fallback:** If AI matching fails, use basic keyword matching
-   - Filters by metadata if available
-   - Matches on name/tags keywords
-4. **Hit:** Load coordinates directly (with transformations if needed).
-5. **Miss:** Fallback to existing AI logic for generating new positions.
+3. **Hit:** Load coordinates directly (with transformations if needed).
+4. **Miss:** Fallback to existing AI logic for generating new positions (if AI matching returns null).
 
 **Benefits:**
 - Semantic understanding handles natural language variations
 - Metadata reduces inference complexity
 - Coordinate transformations handled automatically
-- Simple fallback ensures reliability
+- AI-only matching prevents false positives from keyword matching
 
 ### Feature J: Smart Opponent Positioning (Auto-Antagonists)
 

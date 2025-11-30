@@ -531,6 +531,7 @@ const App: React.FC = () => {
       onResetBalls: handleResetBalls,
       fieldConfig: currentFieldConfig,
       mode,
+      onModeChange: handleModeChange,
     });
 
   // Keyboard shortcut for command input

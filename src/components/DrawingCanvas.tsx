@@ -109,7 +109,6 @@ const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
 
   const renderPath = (path: Omit<Path, "id">, key?: string) => {
     const pathProps = {
-      key: key,
       d: pointsToPathData(path.points),
       stroke: path.color,
       strokeWidth: path.strokeWidth,
@@ -121,7 +120,7 @@ const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
           ? `url(#arrowhead-${path.color.replace("#", "")})`
           : undefined,
     };
-    return <path {...pathProps} />;
+    return <path key={key} {...pathProps} />;
   };
 
   return (

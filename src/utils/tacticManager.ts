@@ -45,6 +45,8 @@ export const extractMetadataFromTags = (
                 allText.includes('defending') || 
                 allText.includes('defense') ||
                 (allText.includes('penalty corner') && (allText.includes('defend') || allText.includes('defense')));
+  const isOutlet = allText.includes('outlet');
+  const isPress = allText.includes('press');
   
   if (isDPC) {
     metadata.phase = 'defense';
@@ -52,6 +54,12 @@ export const extractMetadataFromTags = (
   } else if (isAPC) {
     metadata.phase = 'attack';
     metadata.isAPC = true;
+  } else if (isOutlet) {
+    metadata.phase = 'attack';
+    metadata.isOutlet = true;
+  } else if (isPress) {
+    metadata.phase = 'defense';
+    metadata.isPress = true;
   } else if (allText.includes('attack')) {
     metadata.phase = 'attack';
   } else if (allText.includes('defense') || allText.includes('defend')) {

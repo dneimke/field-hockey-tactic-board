@@ -31,7 +31,7 @@ When you enter a command, the system follows this flow:
    - Uses AI-based semantic matching to understand your intent
    - Considers name, tags, and metadata (team, phase, structure)
    - Handles variations and synonyms (e.g., "PC Defense" matches "DPC")
-   - Falls back to simple keyword matching if AI is unavailable
+   - Automatically detects and filters out drill commands (AI never matches drills to saved tactics)
    - Automatically handles coordinate flipping for same-phase, opposite-team matches
 
 2. **Load Saved Tactic** (if match found):
@@ -56,6 +56,30 @@ The Living Playbook integrates with the smart opponent positioning system:
 - **PC Scenarios**: Penalty corner setups include both attacking and defending teams
 
 This ensures your saved tactics create realistic full-field scenarios, not just single-team positions.
+
+### Automatic Mode Switching
+
+The system automatically switches between **Game Mode** and **Training Mode** based on command type:
+
+- **Drill Commands** → Automatically switches to **Training Mode**
+  - Examples: "Split into 3 groups", "Setup 2 small sided games (5v5)", "4v2 game in the D"
+  - Training mode allows flexible player counts and multiple balls
+  
+- **Tactical Commands** → Automatically switches to **Game Mode**
+  - Examples: "Setup Blue PC Defense", "Red Outlet Back 4", "Blue team press full court"
+  - Game mode uses standard 11 players per team
+  
+- **Saved Tactic Loads** → Keeps current mode
+  - When you load a saved tactic, the mode doesn't change
+  - Saved tactics are game tactics, but the system doesn't force mode switch on load
+  
+- **Manual Override**: You can always manually switch modes using the toolbar toggle
+  - The automatic switching is a convenience feature - you maintain full control
+
+**Why This Matters:**
+- Drill commands require training mode (flexible player counts, multiple balls)
+- Tactical commands work best in game mode (11v11 scenarios)
+- The system makes intelligent assumptions, but you can override them
 
 ## Using the Living Playbook
 
@@ -430,6 +454,118 @@ You can load multiple tactics in sequence:
 1. Load a "Single Team" tactic for one team
 2. Load another "Single Team" tactic for the opponent
 3. Or load a "Full Scenario" tactic for both teams at once
+
+## System Opposites Reference
+
+The tactical intelligence engine understands several types of opposites that enable realistic two-team scenarios and intelligent tactic reuse. This table summarizes all the opposites the system currently recognizes:
+
+| **Opposite Type** | **Examples** | **Implementation Location** | **Auto-Applied?** |
+|------------------|--------------|----------------------------|-------------------|
+| **APC ↔ DPC** | Blue APC ↔ Red DPC<br>Red APC ↔ Blue DPC | `positionCalculator.ts:372-389`<br>When executing PC commands | ✅ Yes<br>When a PC command is executed, the system automatically positions both teams |
+| **Outlet ↔ Press** | Red Outlet ↔ Blue Press<br>Blue Press ↔ Red Outlet | `inferOpponentPhase()` function<br>`positionCalculator.ts:330-356`<br>`commandInterpreter.ts` (matching) | ✅ Yes<br>When a tactical phase command is executed, the opponent is automatically positioned<br>Also works for matching saved tactics (full scenarios)
+| **Team Flipping** | Blue APC using saved Red APC<br>Red DPC using saved Blue DPC | `flipTacticCoordinates()` function<br>`tacticManager.ts:393-428` | ✅ Yes<br>When matching same-phase, opposite-team tactics |
+| **Attack ↔ Defense** | General phase tracking | Metadata extraction<br>`tacticManager.ts:40-59` | ⚠️ Partial<br>Used for matching and metadata, but general "attack" commands don't auto-position defenders (only specific set pieces like PC do) |
+
+### How Opposites Work
+
+**Penalty Corner Opposites:**
+- When you execute "Blue APC", the system automatically positions:
+  - Blue team in attacking penalty corner formation
+  - Red team in defensive penalty corner formation (DPC)
+- This ensures a complete, realistic PC scenario
+
+**Tactical Phase Opposites:**
+- When you execute "Red Outlet", the system automatically positions:
+  - Red team in outlet structure (e.g., Back 4)
+  - Blue team in press structure (defaults to Half Court Press)
+- When you execute "Blue Press", the system automatically positions:
+  - Blue team in press structure (e.g., Full Court)
+  - Red team in outlet structure (defaults to Back 4)
+
+**Coordinate Flipping:**
+- When you request "Blue APC" and you have a saved "Red APC" tactic:
+  - The system recognizes this is the same phase (both APC)
+  - It automatically flips coordinates horizontally (x: 100 - x)
+  - Blue team gets the mirrored positions of the saved Red APC
+
+**Opposite-Phase Matching (Full Scenarios):**
+- When you request "Blue press" and have a saved "Red Outlet" full scenario:
+  - The system recognizes "press" ↔ "outlet" as opposites
+  - It matches the full scenario tactic
+  - The entire scenario is loaded as-is (both teams positioned from the saved tactic)
+  - Example: "Blue press" can find and load "Red Outlet with B4" full scenario
+- This works because full scenarios contain both teams' positions, so the opposite phase is already positioned in the saved tactic
+
+**Default Opponent Structures:**
+- Outlet → Press: Opponent defaults to **Half Court Press**
+- Press → Outlet: Opponent defaults to **Back 4 Outlet**
+
+## Limitations & Known Constraints
+
+Understanding these limitations will help you work effectively with the system:
+
+### 1. Attack ↔ Defense Auto-Positioning Limitation
+
+**Issue:** General "attack" commands don't automatically position defenders.
+
+**Details:**
+- ✅ **Works:** Specific set pieces (PC, shootout) automatically position both teams
+- ⚠️ **Limited:** General "attack" or "circle attack" commands only move the attacking team
+- The system understands attack/defense as opposites in metadata and matching, but doesn't auto-position defenders for non-set-piece attacks
+
+**Workaround:**
+- Save full scenarios when you want both teams positioned for general attacks
+- Use specific set piece commands (PC, shootout) which do auto-position both teams
+
+### 2. Default Structures Cannot Be Customized
+
+**Issue:** When auto-positioning opponents, the system uses fixed default structures that cannot be customized.
+
+**Details:**
+
+| **Your Command** | **Auto-Positioned Opponent** | **Default Structure** | **Cannot Specify** |
+|-----------------|------------------------------|----------------------|-------------------|
+| "Red Outlet" | Blue team → Press | Half Court Press | Full Court, W-Press, Split Vision |
+| "Blue Press" | Red team → Outlet | Back 4 Outlet | Back 3, Three High, Asymmetric |
+
+**Impact:**
+- If you want "Red Outlet vs Blue Full Court Press", you must:
+  1. Execute "Red Outlet" (auto-positions Blue in Half Court Press)
+  2. Manually adjust Blue team to Full Court Press, or
+  3. Save a full scenario tactic with both teams positioned correctly
+
+**Workaround:**
+- Save full scenarios with your preferred opponent structures
+- Load full scenario tactics instead of single-team commands when opponent structure matters
+
+### 3. Coordinate Flipping Scope Limitation
+
+**Issue:** Coordinate flipping only works for same-phase, opposite-team scenarios.
+
+**Details:**
+
+| **Scenario** | **Works?** | **Reason** |
+|-------------|-----------|------------|
+| Blue APC using saved Red APC | ✅ Yes | Same phase (both APC), opposite team |
+| Red DPC using saved Blue DPC | ✅ Yes | Same phase (both DPC), opposite team |
+| Blue DPC using saved Red APC | ❌ No | Different phases (DPC vs APC) |
+| Red APC using saved Blue Outlet | ❌ No | Different types (set piece vs tactical phase) |
+| Blue press → Red Outlet (full scenario) | ✅ Yes | Opposite phases, but full scenario loads as-is |
+
+**Note:** While coordinate flipping doesn't work across different phases, opposite-phase matching for full scenarios is supported. For example, "Blue press" can match a saved "Red Outlet" full scenario and load it entirely as-is.
+
+**Why This Limitation Exists:**
+- Different phases have fundamentally different positioning logic
+- DPC (defense) and APC (attack) positions are not simple mirror images
+- The system correctly rejects these mismatches to avoid tactical errors
+
+**Workaround:**
+- Save separate tactics for each team/phase combination
+- Use coordinate flipping only when phases match (APC→APC, DPC→DPC, Outlet→Outlet, Press→Press)
+
+### 4. Team Matching in Scoring
+
+**Note:** While the system allows same-phase, opposite-team matches (with coordinate flipping), the scoring system penalizes team mismatches in certain scenarios. See the [Scoring System section](#commands-not-matching-saved-tactics) for details.
 
 ## Summary
 

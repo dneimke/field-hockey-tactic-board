@@ -135,6 +135,13 @@ The system operates in two distinct modes:
 
 The AI prompt includes mode context to ensure appropriate command interpretation.
 
+**Automatic Mode Switching:**
+The system automatically switches between Game and Training modes based on command type:
+- **Drill commands** (e.g., "Split into 3 groups", "5v5 game") → Automatically switches to Training Mode
+- **Tactical commands** (e.g., "Setup Blue PC Defense", "Red Outlet Back 4") → Automatically switches to Game Mode
+- **Saved tactic loads** → Keeps current mode (saved tactics are game tactics)
+- Users can manually override mode via the toolbar toggle at any time
+
 ### Field Types
 
 The system supports multiple field diagram views:

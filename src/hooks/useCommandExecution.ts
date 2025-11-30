@@ -11,6 +11,7 @@ interface UseCommandExecutionProps {
   onResetBalls?: () => void;
   fieldConfig?: FieldConfig;
   mode?: "game" | "training";
+  onModeChange?: (mode: "game" | "training") => void;
 }
 
 interface CommandExecutionState {
@@ -26,6 +27,7 @@ export const useCommandExecution = ({
   onResetBalls,
   fieldConfig,
   mode,
+  onModeChange,
 }: UseCommandExecutionProps) => {
   const [state, setState] = useState<CommandExecutionState>({
     isLoading: false,
@@ -82,6 +84,23 @@ export const useCommandExecution = ({
           error: null,
           lastResult: result,
         });
+
+        // Automatic mode switching based on command action type
+        if (onModeChange) {
+          const explanation = result.explanation || '';
+          const isSavedTactic = explanation.includes('Loaded saved tactic') || explanation.includes('Loaded from saved tactic');
+          
+          // Don't change mode if result came from saved tactic (they're already game tactics)
+          if (!isSavedTactic) {
+            if (result.action === 'drill') {
+              // Drill commands → switch to training mode
+              onModeChange('training');
+            } else if (result.action === 'set_piece' || result.action === 'tactical_phase') {
+              // Tactical commands → switch to game mode
+              onModeChange('game');
+            }
+          }
+        }
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : 'Failed to execute command';
         setState({
@@ -91,7 +110,7 @@ export const useCommandExecution = ({
         });
       }
     },
-    [boardState, onPieceMove, onAddFrame, onResetBalls, fieldConfig, mode]
+    [boardState, onPieceMove, onAddFrame, onResetBalls, fieldConfig, mode, onModeChange]
   );
 
   const clearError = useCallback(() => {

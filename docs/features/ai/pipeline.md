@@ -294,6 +294,15 @@ The system now supports two distinct modes that affect how commands are interpre
 
 The AI prompt dynamically adjusts based on the current mode, providing appropriate context and constraints.
 
+**Automatic Mode Switching:**
+The system automatically switches modes based on command action type:
+- **Drill commands** (`action: 'drill'`) → Automatically switches to Training Mode
+- **Tactical commands** (`action: 'set_piece'` or `action: 'tactical_phase'`) → Automatically switches to Game Mode
+- **Saved tactic loads** → Keeps current mode (does not force mode change)
+- Users can manually override mode via toolbar toggle at any time
+
+This ensures drills are executed in the appropriate mode (training) and tactical scenarios use game mode, improving the user experience by reducing manual mode switching.
+
 ## Field Type Context
 
 The system supports multiple field diagram views:

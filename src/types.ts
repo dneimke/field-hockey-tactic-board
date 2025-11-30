@@ -53,6 +53,8 @@ export interface SavedTactic {
     phase?: 'attack' | 'defense';
     isAPC?: boolean;
     isDPC?: boolean;
+    isOutlet?: boolean;
+    isPress?: boolean;
     structure?: string;  // e.g., "back_4", "half_court", "1-3"
   };
   positions: {
