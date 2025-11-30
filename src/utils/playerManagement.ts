@@ -54,7 +54,6 @@ const calculatePositionsForCount = (
   
   // Distribute remaining players
   const remainingCount = includeGK ? count - 1 : count;
-  const startIndex = includeGK ? 1 : 0;
   
   if (remainingCount === 0) return positions;
   

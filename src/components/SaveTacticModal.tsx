@@ -182,8 +182,8 @@ const SaveTacticModal: React.FC<SaveTacticModalProps> = ({
             </div>
             {showHelp === 'name' && (
               <div className="mb-2 p-2 bg-blue-900/30 border border-blue-700 rounded text-xs text-blue-200">
-                This name is used to match commands. Be specific: "Blue PC Defense - 1-3" is better than "Setup". 
-                Examples: "Blue PC Defense", "Red Outlet - Back 4", "Half Court Press"
+                This name is used to match commands. Be specific: &quot;Blue PC Defense - 1-3&quot; is better than &quot;Setup&quot;. 
+                Examples: &quot;Blue PC Defense&quot;, &quot;Red Outlet - Back 4&quot;, &quot;Half Court Press&quot;
               </div>
             )}
             <input
@@ -224,9 +224,9 @@ const SaveTacticModal: React.FC<SaveTacticModalProps> = ({
               <div className="mb-2 p-2 bg-blue-900/30 border border-blue-700 rounded text-xs text-blue-200">
                 <strong>Important:</strong> Tag the PRIMARY team and phase this tactic is FOR, not both teams.
                 <br />
-                <strong>Examples:</strong> "blue, dpc, defense" or "red, apc, attack" or "outlet, back_4"
+                <strong>Examples:</strong> &quot;blue, dpc, defense&quot; or &quot;red, apc, attack&quot; or &quot;outlet, back_4&quot;
                 <br />
-                <strong>Don't:</strong> "red, blue, apc, dpc" (tags both teams and phases)
+                <strong>Don&apos;t:</strong> &quot;red, blue, apc, dpc&quot; (tags both teams and phases)
               </div>
             )}
             <input
@@ -245,7 +245,7 @@ const SaveTacticModal: React.FC<SaveTacticModalProps> = ({
                 onClick={() => setTags(suggestions.tags.join(', '))}
                 className="mt-1 text-xs text-indigo-400 hover:text-indigo-300 underline"
               >
-                Use suggested: "{suggestions.tags.join(', ')}"
+                Use suggested: &quot;{suggestions.tags.join(', ')}&quot;
               </button>
             )}
             {tagWarnings.length > 0 && (
@@ -256,7 +256,7 @@ const SaveTacticModal: React.FC<SaveTacticModalProps> = ({
               </div>
             )}
             <p className="mt-1 text-xs text-gray-400">
-              Tag the team and phase this tactic is FOR. Examples: "blue, dpc" or "red, apc, attack"
+              Tag the team and phase this tactic is FOR. Examples: &quot;blue, dpc&quot; or &quot;red, apc, attack&quot;
             </p>
           </div>
           

@@ -4,7 +4,6 @@ import {
   addPlayer,
   removePlayer,
   validatePlayerCount,
-  DEFAULT_GAME_PLAYER_COUNT,
 } from '../playerManagement';
 import { Player } from '../../types';
 

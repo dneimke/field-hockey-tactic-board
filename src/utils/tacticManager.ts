@@ -255,7 +255,7 @@ const seedDefaultTacticsFirestore = async (userId: string): Promise<void> => {
     
     await tacticService.saveTacticsBatch(userId, seedTacticsWithMetadata);
     console.log('Seeded default tactics for new user (Firestore)');
-  } catch (error: any) {
+  } catch (error: unknown) {
     // If offline, gracefully skip seeding - it will happen when online
     const isOffline = error?.code === 'unavailable' || 
                      error?.message?.includes('offline') ||

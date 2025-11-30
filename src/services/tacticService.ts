@@ -27,7 +27,7 @@ export const getUserTactics = async (userId: string): Promise<SavedTactic[]> => 
     querySnapshot.forEach((docSnapshot) => {
       const data = docSnapshot.data();
       // Extract only SavedTactic fields, excluding Firestore metadata
-      const { createdAt, updatedAt, ...tacticData } = data;
+      const { ...tacticData } = data;
       tactics.push({
         ...tacticData,
         id: docSnapshot.id,
@@ -35,11 +35,12 @@ export const getUserTactics = async (userId: string): Promise<SavedTactic[]> => 
     });
     
     return tactics;
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Re-throw offline errors so they can be handled upstream
-    if (error?.code === 'unavailable' || 
-        error?.message?.includes('offline') ||
-        error?.message?.includes('Failed to get document')) {
+    const firestoreError = error as { code?: string; message?: string };
+    if (firestoreError?.code === 'unavailable' || 
+        firestoreError?.message?.includes('offline') ||
+        firestoreError?.message?.includes('Failed to get document')) {
       throw error;
     }
     console.error('Error fetching user tactics:', error);
@@ -123,11 +124,12 @@ export const saveTacticsBatch = async (userId: string, tactics: SavedTactic[]): 
     });
     
     await batch.commit();
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Re-throw offline errors so they can be handled upstream
-    if (error?.code === 'unavailable' || 
-        error?.message?.includes('offline') ||
-        error?.message?.includes('Failed to get document')) {
+    const firestoreError = error as { code?: string; message?: string };
+    if (firestoreError?.code === 'unavailable' || 
+        firestoreError?.message?.includes('offline') ||
+        firestoreError?.message?.includes('Failed to get document')) {
       throw error;
     }
     console.error('Error batch saving tactics:', error);

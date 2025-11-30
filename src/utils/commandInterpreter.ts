@@ -4,7 +4,7 @@ import { BoardState, CommandResult, Position, SavedTactic } from '../types';
 import { getGeminiConfig } from '../config/aiConfig';
 import { validatePosition, calculateShapePositions, ShapeConfig, resolveOverlaps } from './positionCalculator';
 import { FieldConfig } from '../config/fieldConfig';
-import { searchTactics, savedTacticToMoves, getAllTactics, flipTacticCoordinates } from './tacticManager';
+import { savedTacticToMoves, getAllTactics, flipTacticCoordinates } from './tacticManager';
 import { createPrompt } from './promptBuilder';
 
 // Simple in-memory cache for AI matching responses
@@ -55,35 +55,6 @@ const extractTeamFromCommand = (command: string): 'red' | 'blue' | null => {
   return null;
 };
 
-/**
- * Extracts tactical phase from command text
- */
-const extractPhaseFromCommand = (command: string): { type: 'attack' | 'defense' | null; isAPC: boolean; isDPC: boolean; isOutlet?: boolean; isPress?: boolean } => {
-  const normalized = command.toLowerCase();
-  const isAPC = normalized.includes('apc') || 
-                 normalized.includes('attacking') || 
-                 normalized.includes('attack') ||
-                 (normalized.includes('penalty corner') && (normalized.includes('attack') || normalized.includes('attacking')));
-  const isDPC = normalized.includes('dpc') || 
-                 normalized.includes('defending') || 
-                 normalized.includes('defense') ||
-                 (normalized.includes('penalty corner') && (normalized.includes('defend') || normalized.includes('defense')));
-  const isOutlet = normalized.includes('outlet');
-  const isPress = normalized.includes('press');
-  
-  let type: 'attack' | 'defense' | null = null;
-  if (isDPC || normalized.includes('defend')) {
-    type = 'defense';
-  } else if (isAPC || normalized.includes('attack')) {
-    type = 'attack';
-  } else if (isOutlet) {
-    type = 'attack';
-  } else if (isPress) {
-    type = 'defense';
-  }
-  
-  return { type, isAPC, isDPC, isOutlet, isPress };
-};
 
 /**
  * Checks if command phase and tactic phase are opposites (Outlet ↔ Press)

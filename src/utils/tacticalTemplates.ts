@@ -1,15 +1,5 @@
 import { Position, Player, SetPieceAction, DrillAction, BoardState } from '../types';
 
-// Helper to find players by team
-const getTeamPlayers = (allPlayers: Player[], team: 'red' | 'blue'): Player[] => {
-  return allPlayers.filter(p => p.team === team);
-};
-
-// Helper to find GK
-const getGoalkeeper = (players: Player[]): Player | undefined => {
-  return players.find(p => p.isGoalkeeper);
-};
-
 // Helper to calculate X position on the D arc given a Y position
 const getCircleX = (y: number, isRightGoal: boolean): number => {
   // Standard Pitch Dimensions
@@ -50,7 +40,6 @@ export const calculateAPCPositions = (
   const fieldPlayers = attackers.filter(p => !p.isGoalkeeper);
   const availableAttackers = [...fieldPlayers];
   
-  const goalX = isRightSideGoal ? 100 : 0;
   const forwardDir = isRightSideGoal ? -1 : 1;
   
   // 0. Attacking GK: Keep in goal position (do not move to center)
@@ -222,7 +211,9 @@ export const calculateDrillPositions = (
   const moves: Array<{ targetId: string; newPosition: Position }> = [];
   
   // Define Zone Boundaries
-  let zoneXStart = 0, zoneXEnd = 100, zoneYStart = 0, zoneYEnd = 100;
+  let zoneXStart = 0, zoneXEnd = 100;
+  const zoneYStart = 0;
+  const zoneYEnd = 100;
   
   switch (config.zone) {
     case 'attacking_25':
@@ -253,8 +244,8 @@ export const calculateDrillPositions = (
   const unusedAttackers = attackers.slice(config.attackers);
   const unusedDefenders = defenders.slice(config.defenders);
   
-  unusedAttackers.forEach((p, i) => moves.push({ targetId: p.id, newPosition: { x: zoneXStart, y: -5 } })); // Top sideline
-  unusedDefenders.forEach((p, i) => moves.push({ targetId: p.id, newPosition: { x: zoneXEnd, y: 105 } })); // Bottom sideline
+  unusedAttackers.forEach((p) => moves.push({ targetId: p.id, newPosition: { x: zoneXStart, y: -5 } })); // Top sideline
+  unusedDefenders.forEach((p) => moves.push({ targetId: p.id, newPosition: { x: zoneXEnd, y: 105 } })); // Bottom sideline
 
   // Distribute Attackers (Wide Arc / Shape)
   activeAttackers.forEach((p, i) => {

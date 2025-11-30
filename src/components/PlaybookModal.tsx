@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { SavedTactic } from "../types";
 import { getAllTactics, deleteTactic, searchTactics } from "../utils/tacticManager";
 
@@ -252,7 +252,7 @@ const PlaybookModal: React.FC<PlaybookModalProps> = ({
                         if (examples.length > 0) {
                           return (
                             <div className="text-xs text-gray-500 italic">
-                              Would match: "{examples.join('", "')}"
+                              Would match: &quot;{examples.join('&quot;, &quot;')}&quot;
                             </div>
                           );
                         }

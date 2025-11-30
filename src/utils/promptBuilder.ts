@@ -1,4 +1,4 @@
-import { BoardState, FieldType } from '../types';
+import { BoardState } from '../types';
 import { FieldConfig } from '../config/fieldConfig';
 
 /**

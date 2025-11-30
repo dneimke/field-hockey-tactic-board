@@ -74,7 +74,7 @@ export const signInWithGoogle = async (): Promise<User> => {
     
     // Handle configuration not found (Google Sign-In not enabled in Firebase Console)
     if (authError.code === 'auth/operation-not-allowed' || 
-        (authError as any).message?.includes('CONFIGURATION_NOT_FOUND')) {
+        (authError as AuthError & { message?: string }).message?.includes('CONFIGURATION_NOT_FOUND')) {
       throw new Error('Google Sign-In is not enabled. Please enable it in Firebase Console under Authentication > Sign-in method.');
     }
     

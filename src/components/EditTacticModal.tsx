@@ -116,7 +116,7 @@ const EditTacticModal: React.FC<EditTacticModalProps> = ({
             </div>
             {showHelp === 'name' && (
               <div className="mb-2 p-2 bg-blue-900/30 border border-blue-700 rounded text-xs text-blue-200">
-                This name is used to match commands. Be specific: "Blue PC Defense - 1-3" is better than "Setup".
+                This name is used to match commands. Be specific: &quot;Blue PC Defense - 1-3&quot; is better than &quot;Setup&quot;.
               </div>
             )}
             <input
@@ -154,7 +154,7 @@ const EditTacticModal: React.FC<EditTacticModalProps> = ({
               <div className="mb-2 p-2 bg-blue-900/30 border border-blue-700 rounded text-xs text-blue-200">
                 <strong>Important:</strong> Tag the PRIMARY team and phase this tactic is FOR, not both teams.
                 <br />
-                <strong>Examples:</strong> "blue, dpc, defense" or "red, apc, attack"
+                <strong>Examples:</strong> &quot;blue, dpc, defense&quot; or &quot;red, apc, attack&quot;
               </div>
             )}
             <input

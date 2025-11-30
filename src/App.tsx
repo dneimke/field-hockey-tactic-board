@@ -10,15 +10,15 @@ import EditTacticModal from './components/EditTacticModal';
 import HeaderToolbar from './components/HeaderToolbar';
 import CommandInput from './components/CommandInput';
 import TeamSettingsModal from './components/TeamSettingsModal';
-import { INITIAL_RED_TEAM, INITIAL_BLUE_TEAM, INITIAL_BALLS, createGameModeTeam } from './constants';
+import { INITIAL_RED_TEAM, INITIAL_BLUE_TEAM, INITIAL_BALLS } from './constants';
 import { Player, Ball, Position, Path, Tactic, BoardState, FieldType, SavedTactic } from './types';
 import { v4 as uuidv4 } from 'uuid';
 import { useMediaQuery } from './hooks/useMediaQuery';
 import { useCommandExecution } from './hooks/useCommandExecution';
-import { FIELD_CONFIGS } from './config/fieldConfig';
-import { addPlayer as addPlayerUtil, removePlayer as removePlayerUtil, validatePlayerCount, createInitialTeam } from './utils/playerManagement';
+import { FIELD_CONFIGS, FieldConfig } from './config/fieldConfig';
+import { addPlayer as addPlayerUtil, removePlayer as removePlayerUtil, createInitialTeam } from './utils/playerManagement';
 import { saveTactic as saveTacticToPlaybook, savedTacticToMoves, updateTactic, setCurrentUserId } from './utils/tacticManager';
-import { subscribeToAuthState, signOutUser, getCurrentUser } from './services/authService';
+import { subscribeToAuthState, signOutUser } from './services/authService';
 import { User } from 'firebase/auth';
 import AuthModal from './components/AuthModal';
 
@@ -397,7 +397,7 @@ const App: React.FC = () => {
         setIsSaveModalOpen(false);
       }
     },
-    [redTeam, blueTeam, balls, paths, frames, mode],
+    [redTeam, blueTeam, balls, paths, frames, mode, fieldType],
   );
 
   const handleImportTactic = useCallback((onSuccess: () => void) => {
@@ -522,7 +522,7 @@ const App: React.FC = () => {
   );
 
   // Command execution hook
-  const currentFieldConfig = FIELD_CONFIGS[fieldType];
+  const currentFieldConfig: FieldConfig = FIELD_CONFIGS[fieldType];
   const { executeCommand, isLoading: isCommandLoading, error: commandError, lastResult, clearError } =
     useCommandExecution({
       boardState,
