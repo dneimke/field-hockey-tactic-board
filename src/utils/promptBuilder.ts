@@ -255,6 +255,7 @@ EXAMPLES:
 - "Move red player 7 to center" → { "action": "move", "moves": [{ "targetId": "R7", "newPosition": { "x": 50, "y": 50 }, "explanation": "Moving to center" }], "explanation": "Moved red player 7 to center" }
 - "Form a circle with all players" → { "action": "shape", "shape": { "type": "circle", "center": { "x": 50, "y": 50 }, "radius": 30, "players": ["R1", "B1", "R2", "B2", ...] }, "explanation": "Forming a circle" }
 - "Setup a 2-castle PC attack" → { "action": "set_piece", "type": "APC", "parameters": { "batteries": 2 }, "explanation": "Setting up 2-battery APC" }
+- "Blue team defending a penalty corner" → { "action": "set_piece", "type": "DPC", "parameters": {}, "explanation": "Setting up DPC for blue team" }
 - "4v2 game in the D" → { "action": "drill", "type": "small_sided_game", "parameters": { "attackers": 4, "defenders": 2, "zone": "defensive_circle" }, "explanation": "Setting up 4v2 drill in defensive circle" }
 - "Red team outlet using a Back 3" → { "action": "tactical_phase", "type": "outlet", "team": "red", "structure": "back_3", "explanation": "Setting up Back 3 outlet structure for red team" }
 - "Blue team setup a Half Court press" → { "action": "tactical_phase", "type": "press", "team": "blue", "structure": "half_court", "explanation": "Setting up Half Court press for blue team" }
@@ -272,7 +273,6 @@ IMPORTANT:
 - Avoid placing players on top of each other.
 - Use "ball_1", "ball_2" etc. ONLY if multiple balls are needed. Otherwise use "ball".
 ${trainingModeNote}
-
-Now interpret this command: "${command}"`;
+`;
 };
 
