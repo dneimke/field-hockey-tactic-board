@@ -113,7 +113,13 @@ INSTRUCTIONS:
    - A command for "press" can match a saved "outlet" tactic (and vice versa) IF it's a full scenario
    - Example: Command "Blue press" → Match: saved "Red Outlet" full scenario (no coordinate flip needed, applies as-is)
    - Example: Command "Red outlet" → Match: saved "Blue Press" full scenario (no coordinate flip needed, applies as-is)
-8. Return ONLY valid JSON, no markdown, no extra text
+8. **APC ↔ DPC OPPOSITES**: APC and DPC are tactical opposites for penalty corners
+   - A command for "DPC" (defending penalty corner) can match a saved "APC" tactic (and vice versa) IF it's a full scenario
+   - This works because full scenario PC tactics contain both teams: the attacking team (APC) and defending team (DPC)
+   - Example: Command "Blue team defending a penalty corner" or "Blue DPC" → Match: saved "Red APC" full scenario (no coordinate flip needed, applies as-is)
+   - Example: Command "Red team attacking penalty corner" or "Red APC" → Match: saved "Blue DPC" full scenario (if it exists, no coordinate flip needed)
+   - IMPORTANT: Only match opposite phases for full_scenario tactics, not single_team tactics
+9. Return ONLY valid JSON, no markdown, no extra text
 
 RETURN FORMAT:
 {
@@ -126,7 +132,8 @@ EXAMPLES:
 - Command: "Setup Blue PC Defense" → Match: tactic with name/tags containing "blue", "dpc", "defense", needsCoordinateFlip: false
 - Command: "Red Outlet Back 4" → Match: tactic with "red", "outlet", "back_4" in name/tags/metadata, needsCoordinateFlip: false
 - Command: "Blue APC" or "show a blue apc" with saved "Red APC" → Match: "Red APC" with needsCoordinateFlip: true (opposite team, same phase)
-- Command: "Blue DPC" with saved "Red APC" → Return null (different phases, not a match)
+- Command: "Blue DPC" with saved "Red APC" full scenario → Match: "Red APC" with needsCoordinateFlip: false (opposite phase, full scenario applies as-is - contains both Red attacking and Blue defending)
+- Command: "Blue team defending a penalty corner" with saved "Red APC" full scenario → Match: "Red APC" with needsCoordinateFlip: false (opposite phase, full scenario applies as-is)
 - Command: "Blue press" with saved "Red Outlet" full scenario → Match: "Red Outlet" with needsCoordinateFlip: false (opposite phase, full scenario applies as-is)
 - Command: "Red outlet" with saved "Blue Press" full scenario → Match: "Blue Press" with needsCoordinateFlip: false (opposite phase, full scenario applies as-is)
 - Command: "Split into 3 groups" → Return null (this is a drill, not a saved tactic)
