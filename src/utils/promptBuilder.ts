@@ -1,4 +1,4 @@
-import { BoardState } from '../types';
+import { BoardState, Player } from '../types';
 import { FieldConfig } from '../config/fieldConfig';
 
 // Interface Definitions
@@ -153,7 +153,7 @@ const buildGeometrySection = (): string => {
 };
 
 const buildSeparatedPlayerList = (boardState: BoardState): string => {
-  const formatPlayer = (p: any) => `${p.number} (ID:${p.id}, x:${p.position.x}, y:${p.position.y})`;
+  const formatPlayer = (p: Player) => `${p.number} (ID:${p.id}, x:${p.position.x}, y:${p.position.y})`;
   
   const redGK = boardState.redTeam.filter(p => p.isGoalkeeper).map(formatPlayer).join(', ');
   const redField = boardState.redTeam.filter(p => !p.isGoalkeeper).map(formatPlayer).join(', ');
