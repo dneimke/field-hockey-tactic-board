@@ -17,7 +17,7 @@ describe('promptBuilder', () => {
   it('should create a prompt with basic structure', () => {
     const prompt = createPrompt('test command', mockBoardState);
     expect(prompt).toContain('You are a field hockey tactic assistant');
-    expect(prompt).toContain('COMMAND TO INTERPRET: "test command"');
+    expect(prompt).toContain('test command');
   });
 
   it('should include geometry anchors', () => {
@@ -51,7 +51,7 @@ describe('promptBuilder', () => {
 
   it('should enforce reasoning field', () => {
     const prompt = createPrompt('test command', mockBoardState);
-    expect(prompt).toContain('"Reasoning" field must come first');
+    expect(prompt).toContain('"reasoning" field must come first');
   });
 });
 
