@@ -295,7 +295,7 @@ export const getAllTactics = async (): Promise<SavedTactic[]> => {
 };
 
 /**
- * Searches tactics by name and tags using fuzzy matching
+ * Searches tactics by name and tags using fuzzy matching (simplified)
  */
 export const searchTactics = async (query: string): Promise<SavedTactic[]> => {
   if (!query.trim()) {

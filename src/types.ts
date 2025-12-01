@@ -66,7 +66,21 @@ export interface SavedTactic {
   }[];
 }
 
-export interface SetPieceAction {
+export type MovementType = 'sprint' | 'curve' | 'jockey' | 'jog';
+
+export interface Move {
+  targetId: string; // Player ID or 'ball'
+  newPosition: Position;
+  movementType?: MovementType;
+  explanation?: string;
+}
+
+export interface BaseAction {
+  reasoning?: string;
+  explanation: string;
+}
+
+export interface SetPieceAction extends BaseAction {
   action: 'set_piece';
   type: 'APC' | 'DPC' | 'shootout';
   parameters: {
@@ -84,41 +98,37 @@ export interface SetPieceAction {
     attackerId?: string;            // The taker
     gkId?: string;                  // The defending GK
   };
-  explanation: string;
 }
 
-export interface DrillAction {
+export interface DrillAction extends BaseAction {
   action: 'drill';
   type: 'small_sided_game' | 'possession';
   parameters: {
-    attackers: number;          // Count (e.g., 4)
-    defenders: number;          // Count (e.g., 3)
-    withGK: boolean;            // true/false
+    attackers: number;          // Count of FIELD PLAYERS (e.g., 4 means 4 field players, NOT including GK)
+    defenders: number;          // Count of FIELD PLAYERS (e.g., 3 means 3 field players, NOT including GK)
+    withGK: boolean;            // true/false - only set true if goalkeepers are explicitly requested
     zone: 'attacking_25' | 'midfield' | 'defensive_circle' | 'full_field';
     shape?: 'wide' | 'narrow';  // Optional hint
+    gameCount?: number;         // Optional: number of separate games (default: 1)
+    gameZones?: Array<'attacking_25' | 'midfield' | 'defensive_circle' | 'full_field'>; // Optional: zones for each game (must match gameCount)
   };
-  explanation: string;
 }
 
-export interface TacticalPhaseAction {
+export interface TacticalPhaseAction extends BaseAction {
   action: 'tactical_phase';
   type: 'outlet' | 'press';
   team: 'red' | 'blue';
   structure: string;            // Structure name (e.g., 'back_4', 'full_court', 'w_press')
   intensity?: number;           // Optional: 0-100 (for press height/intensity)
-  explanation: string;
+}
+
+export interface MoveAction extends BaseAction {
+  action: 'move' | 'formation' | 'reset' | 'ball' | 'multiple';
+  moves: Move[];
 }
 
 export type CommandResult = 
-  | {
-      action: 'move' | 'formation' | 'reset' | 'ball' | 'multiple';
-      moves: Array<{
-        targetId: string; // Player ID or 'ball'
-        newPosition: Position;
-        explanation?: string;
-      }>;
-      explanation: string;
-    }
+  | MoveAction
   | SetPieceAction
   | DrillAction
   | TacticalPhaseAction;

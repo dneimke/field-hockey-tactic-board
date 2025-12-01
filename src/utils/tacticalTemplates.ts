@@ -202,25 +202,38 @@ export const calculateDPCPositions = (
   return moves;
 };
 
-// Drills / Small Sided Games
-export const calculateDrillPositions = (
-  config: DrillAction['parameters'],
-  attackers: Player[],
-  defenders: Player[]
-): Array<{ targetId: string; newPosition: Position }> => {
-  const moves: Array<{ targetId: string; newPosition: Position }> = [];
-  
-  // Define Zone Boundaries
+// Helper function to get zone boundaries
+const getZoneBoundaries = (
+  zone: 'attacking_25' | 'midfield' | 'defensive_circle' | 'full_field',
+  gameIndex: number = 0,
+  totalGames: number = 1
+): { zoneXStart: number; zoneXEnd: number; zoneYStart: number; zoneYEnd: number } => {
   let zoneXStart = 0, zoneXEnd = 100;
   const zoneYStart = 0;
   const zoneYEnd = 100;
   
-  switch (config.zone) {
+  switch (zone) {
     case 'attacking_25':
       zoneXStart = 75; zoneXEnd = 100;
       break;
     case 'midfield':
-      zoneXStart = 33; zoneXEnd = 66;
+      // For multiple games in midfield, split into left and right halves
+      if (totalGames > 1 && zone === 'midfield') {
+        const midWidth = 33; // Midfield width (33 to 66)
+        const gameWidth = midWidth / totalGames;
+        zoneXStart = 33 + (gameIndex * gameWidth);
+        zoneXEnd = 33 + ((gameIndex + 1) * gameWidth);
+        // Also split vertically for better separation
+        const gameHeight = 100 / totalGames;
+        return {
+          zoneXStart,
+          zoneXEnd,
+          zoneYStart: gameIndex * gameHeight,
+          zoneYEnd: (gameIndex + 1) * gameHeight
+        };
+      } else {
+        zoneXStart = 33; zoneXEnd = 66;
+      }
       break;
     case 'defensive_circle':
       zoneXStart = 0; zoneXEnd = 25; // Using 25 as approx 23m area which includes circle
@@ -230,37 +243,35 @@ export const calculateDrillPositions = (
       // Default full field
       break;
   }
+  
+  return { zoneXStart, zoneXEnd, zoneYStart, zoneYEnd };
+};
 
+// Helper function to position players for a single game
+const positionPlayersForGame = (
+  gameAttackers: Player[],
+  gameDefenders: Player[],
+  gameGoalkeepers: Player[],
+  zone: 'attacking_25' | 'midfield' | 'defensive_circle' | 'full_field',
+  gameIndex: number,
+  totalGames: number,
+  withGK: boolean
+): Array<{ targetId: string; newPosition: Position }> => {
+  const moves: Array<{ targetId: string; newPosition: Position }> = [];
+  
+  const { zoneXStart, zoneXEnd, zoneYStart, zoneYEnd } = getZoneBoundaries(zone, gameIndex, totalGames);
   const zoneWidth = zoneXEnd - zoneXStart;
   const zoneHeight = zoneYEnd - zoneYStart;
   const centerX = zoneXStart + zoneWidth / 2;
   const centerY = zoneYStart + zoneHeight / 2;
 
-  // Filter active players based on counts
-  const activeAttackers = attackers.slice(0, config.attackers);
-  const activeDefenders = defenders.slice(0, config.defenders);
-  
-  // Move unused to bench (off-field or sideline)
-  const unusedAttackers = attackers.slice(config.attackers);
-  const unusedDefenders = defenders.slice(config.defenders);
-  
-  unusedAttackers.forEach((p) => moves.push({ targetId: p.id, newPosition: { x: zoneXStart, y: -5 } })); // Top sideline
-  unusedDefenders.forEach((p) => moves.push({ targetId: p.id, newPosition: { x: zoneXEnd, y: 105 } })); // Bottom sideline
-
   // Distribute Attackers (Wide Arc / Shape)
-  activeAttackers.forEach((p, i) => {
-    if (p.isGoalkeeper) return; // Handle GK separately if needed
-    
-    // Simple formation within zone
-    // E.g. spread out relative to center
+  gameAttackers.forEach((p, i) => {
     const spreadX = zoneWidth * 0.6;
     const spreadY = zoneHeight * 0.8;
     
-    // Normalized position 0..1
-    const t = activeAttackers.length > 1 ? i / (activeAttackers.length - 1) : 0.5;
-    
-    // Arc shape facing goal? Assume attacking right for 'attacking_25'
-    const xOffset = Math.sin(t * Math.PI) * (spreadX / 2); // Curve back
+    const t = gameAttackers.length > 1 ? i / (gameAttackers.length - 1) : 0.5;
+    const xOffset = Math.sin(t * Math.PI) * (spreadX / 2);
     const yPos = zoneYStart + (zoneHeight * 0.1) + (t * spreadY);
     const xPos = zoneXStart + (zoneWidth * 0.2) + xOffset;
 
@@ -270,20 +281,23 @@ export const calculateDrillPositions = (
     });
   });
 
-  // Distribute Defenders (Compact, between ball/attackers and goal)
-  activeDefenders.forEach((p, i) => {
-    if (p.isGoalkeeper && config.withGK) {
-       // GK Logic
-       const gkX = config.zone === 'attacking_25' ? 100 : (config.zone === 'defensive_circle' ? 0 : centerX);
-       moves.push({ targetId: p.id, newPosition: { x: gkX, y: 50 } });
-       return;
-    }
-
-    // Defenders compact
-    const spreadY = zoneHeight * 0.4;
-    const t = activeDefenders.length > 1 ? i / (activeDefenders.length - 1) : 0.5;
+  // Handle goalkeepers if explicitly requested
+  if (withGK && gameGoalkeepers.length > 0) {
+    const gk = gameGoalkeepers[0];
+    const gkX = zone === 'attacking_25' ? 100 : (zone === 'defensive_circle' ? 0 : centerX);
+    moves.push({ targetId: gk.id, newPosition: { x: gkX, y: 50 } });
     
-    const xPos = centerX + (zoneWidth * 0.2); // Bit deeper than attackers
+    gameGoalkeepers.slice(1).forEach((p) => {
+      moves.push({ targetId: p.id, newPosition: { x: -5, y: 50 } });
+    });
+  }
+
+  // Distribute Defenders (Compact, between ball/attackers and goal)
+  gameDefenders.forEach((p, i) => {
+    const spreadY = zoneHeight * 0.4;
+    const t = gameDefenders.length > 1 ? i / (gameDefenders.length - 1) : 0.5;
+    
+    const xPos = centerX + (zoneWidth * 0.2);
     const yPos = centerY - (spreadY/2) + (t * spreadY);
 
     moves.push({
@@ -291,6 +305,90 @@ export const calculateDrillPositions = (
       newPosition: { x: xPos, y: yPos }
     });
   });
+  
+  return moves;
+};
+
+// Drills / Small Sided Games
+export const calculateDrillPositions = (
+  config: DrillAction['parameters'],
+  attackers: Player[],
+  defenders: Player[]
+): Array<{ targetId: string; newPosition: Position }> => {
+  const moves: Array<{ targetId: string; newPosition: Position }> = [];
+  
+  // CRITICAL: Filter out goalkeepers first, then select field players
+  // "5v5" means 5 FIELD PLAYERS per team, not including goalkeepers
+  const fieldAttackers = attackers.filter(p => !p.isGoalkeeper);
+  const fieldDefenders = defenders.filter(p => !p.isGoalkeeper);
+  const goalkeepers = [...attackers, ...defenders].filter(p => p.isGoalkeeper);
+
+  // Determine number of games
+  const gameCount = config.gameCount || 1;
+  
+  // Determine zones for each game
+  const gameZones: Array<'attacking_25' | 'midfield' | 'defensive_circle' | 'full_field'> = [];
+  if (config.gameZones && config.gameZones.length === gameCount) {
+    gameZones.push(...config.gameZones);
+  } else {
+    // Auto-distribute: if multiple games and zone is midfield, split it
+    // Otherwise, use the same zone for all games
+    for (let i = 0; i < gameCount; i++) {
+      gameZones.push(config.zone);
+    }
+  }
+
+  // Calculate total players needed across all games
+  const totalAttackersNeeded = config.attackers * gameCount;
+  const totalDefendersNeeded = config.defenders * gameCount;
+
+  // Select field players (may need more if multiple games)
+  const activeAttackers = fieldAttackers.slice(0, totalAttackersNeeded);
+  const activeDefenders = fieldDefenders.slice(0, totalDefendersNeeded);
+  
+  // Move unused field players to bench (off-field or sideline)
+  const unusedAttackers = fieldAttackers.slice(totalAttackersNeeded);
+  const unusedDefenders = fieldDefenders.slice(totalDefendersNeeded);
+  
+  unusedAttackers.forEach((p) => moves.push({ targetId: p.id, newPosition: { x: -5, y: -5 } })); // Off-field
+  unusedDefenders.forEach((p) => moves.push({ targetId: p.id, newPosition: { x: 105, y: 105 } })); // Off-field
+
+  // Handle goalkeepers: move off-field unless explicitly requested
+  if (!config.withGK) {
+    goalkeepers.forEach((p) => {
+      moves.push({ targetId: p.id, newPosition: { x: -5, y: 50 } }); // Off-field
+    });
+  }
+
+  // Distribute players across games
+  for (let gameIndex = 0; gameIndex < gameCount; gameIndex++) {
+    const gameAttackers = activeAttackers.slice(
+      gameIndex * config.attackers,
+      (gameIndex + 1) * config.attackers
+    );
+    const gameDefenders = activeDefenders.slice(
+      gameIndex * config.defenders,
+      (gameIndex + 1) * config.defenders
+    );
+    
+    // Distribute goalkeepers across games if requested
+    const gameGoalkeepers = config.withGK && goalkeepers.length > 0
+      ? [goalkeepers[gameIndex % goalkeepers.length]].filter(Boolean)
+      : [];
+
+    const gameZone = gameZones[gameIndex];
+    const gameMoves = positionPlayersForGame(
+      gameAttackers,
+      gameDefenders,
+      gameGoalkeepers,
+      gameZone,
+      gameIndex,
+      gameCount,
+      config.withGK
+    );
+    
+    moves.push(...gameMoves);
+  }
   
   return moves;
 };
