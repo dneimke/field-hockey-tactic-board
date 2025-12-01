@@ -20,6 +20,7 @@ interface HeaderToolbarProps {
   user: User | null;
   onOpenAuth: () => void;
   onSignOut: () => void;
+  onOpenHelp: () => void;
 }
 
 const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
@@ -39,6 +40,7 @@ const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
   user,
   onOpenAuth,
   onSignOut,
+  onOpenHelp,
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -174,6 +176,15 @@ const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
                   <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">File Operations</span>
                 </div>
                 <button
+                  onClick={() => handleAction(onOpenHelp)}
+                  className="w-full text-left px-4 py-2 text-sm text-emerald-400 hover:bg-gray-700 transition-colors flex items-center gap-3"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Saving & Storage Help
+                </button>
+                <button
                   onClick={() => handleAction(onSave)}
                   className="w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-700 transition-colors flex items-center gap-3"
                 >
@@ -189,7 +200,7 @@ const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                   </svg>
-                  Load Tactic
+                  Load Animation
                 </button>
                 <button
                   onClick={() => handleAction(onOpenPlaybook)}
@@ -269,6 +280,15 @@ const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
                   <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">File Operations</span>
                 </div>
                 <button
+                  onClick={() => handleAction(onOpenHelp)}
+                  className="w-full text-left px-4 py-2 text-sm text-emerald-400 hover:bg-gray-700 transition-colors flex items-center gap-3"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Saving & Storage Help
+                </button>
+                <button
                   onClick={() => handleAction(onSave)}
                   className="w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-700 transition-colors flex items-center gap-3"
                 >
@@ -284,7 +304,7 @@ const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                   </svg>
-                  Load Tactic
+                  Load Animation
                 </button>
                 <button
                   onClick={() => handleAction(onOpenPlaybook)}

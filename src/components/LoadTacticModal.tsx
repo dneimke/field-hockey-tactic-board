@@ -79,7 +79,7 @@ const LoadTacticModal: React.FC<LoadTacticModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-white">Load Tactic</h2>
+          <h2 className="text-2xl font-bold text-white">Load Animation</h2>
           <button
             onClick={onClose}
             title="Close"
@@ -94,7 +94,7 @@ const LoadTacticModal: React.FC<LoadTacticModalProps> = ({
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full bg-gray-700 text-white rounded-md p-2 border border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none mb-4"
-          placeholder="Search tactics..."
+          placeholder="Search animations..."
         />
 
         <div className="flex-grow overflow-y-auto pr-2">
@@ -138,8 +138,8 @@ const LoadTacticModal: React.FC<LoadTacticModalProps> = ({
             <div className="text-center text-gray-400 py-8">
               <p>
                 {searchTerm
-                  ? "No tactics match your search."
-                  : "No saved tactics found."}
+                  ? "No animations match your search."
+                  : "No saved animations found."}
               </p>
             </div>
           )}

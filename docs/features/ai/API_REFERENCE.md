@@ -52,18 +52,33 @@ interface BoardState {
 
 ## Command Result Types
 
-The AI returns one of six command result types:
+The AI returns one of several command result types. **ALL** result types must include a `reasoning` field first.
 
-### 1. Standard Moves
+### Common Interfaces
+
+**Movement Types:**
 ```typescript
-{
+type MovementType = 'sprint' | 'curve' | 'jockey' | 'jog';
+```
+
+**Base Action:**
+```typescript
+interface BaseAction {
+  reasoning: string; // Chain of Thought: logic explanation
+  explanation: string; // User-facing explanation
+}
+```
+
+### 1. Standard Moves (MoveAction)
+```typescript
+interface MoveAction extends BaseAction {
   action: 'move' | 'formation' | 'reset' | 'ball' | 'multiple';
   moves: Array<{
     targetId: string;        // Player ID or "ball"
     newPosition: Position;
+    movementType?: MovementType; // Optional: sprint, curve, jockey, jog
     explanation?: string;
   }>;
-  explanation: string;
 }
 ```
 
@@ -76,7 +91,7 @@ The AI returns one of six command result types:
 
 ### 2. Set Piece Action
 ```typescript
-interface SetPieceAction {
+interface SetPieceAction extends BaseAction {
   action: 'set_piece';
   type: 'APC' | 'DPC' | 'shootout';
   parameters: {
@@ -94,27 +109,12 @@ interface SetPieceAction {
     attackerId?: string;            // The taker (e.g., "R10")
     gkId?: string;                  // The defending GK (e.g., "B1")
   };
-  explanation: string;
 }
 ```
 
-**APC Parameters:**
-- `batteries`: Number of battery formations (1 or 2)
-- `injectorSide`: Which side of goal the injector is on
-- `injectorId`: Specific player to use as injector (optional)
-- `battery1Type`: Primary battery position
-
-**DPC Parameters:**
-- `defenseStructure`: Defensive structure type
-- `runnerCount`: Number of runners (default 4)
-
-**Shootout Parameters:**
-- `attackerId`: Attacker taking the shot
-- `gkId`: Goalkeeper defending
-
 ### 3. Drill Action
 ```typescript
-interface DrillAction {
+interface DrillAction extends BaseAction {
   action: 'drill';
   type: 'small_sided_game' | 'possession';
   parameters: {
@@ -126,7 +126,6 @@ interface DrillAction {
     gameCount?: number;         // Optional: number of separate games (default: 1)
     gameZones?: Array<'attacking_25' | 'midfield' | 'defensive_circle' | 'full_field'>;
   };
-  explanation: string;
 }
 ```
 
@@ -144,13 +143,12 @@ interface DrillAction {
 
 ### 4. Tactical Phase Action
 ```typescript
-interface TacticalPhaseAction {
+interface TacticalPhaseAction extends BaseAction {
   action: 'tactical_phase';
   type: 'outlet' | 'press';
   team: 'red' | 'blue';
   structure: string;            // Structure name
   intensity?: number;           // Optional: 0-100 (for press height)
-  explanation: string;
 }
 ```
 
@@ -174,7 +172,7 @@ interface TacticalPhaseAction {
 
 ### 5. Shape Action
 ```typescript
-{
+interface ShapeAction extends BaseAction {
   action: 'shape';
   shape: {
     type: 'circle' | 'line' | 'grid';
@@ -186,13 +184,12 @@ interface TacticalPhaseAction {
     cols?: number;                       // For grid
     players: string[];                   // Ordered list of player IDs
   };
-  explanation: string;
 }
 ```
 
 ### 6. Composite Action
 ```typescript
-{
+interface CompositeAction extends BaseAction {
   action: 'composite';
   shapes?: Array<{
     type: 'circle' | 'line' | 'grid';
@@ -204,7 +201,6 @@ interface TacticalPhaseAction {
     targetId: string;
     newPosition: Position;
   }>;
-  explanation: string;
 }
 ```
 
@@ -232,20 +228,9 @@ interface SavedTactic {
     relativeIndex: number;
     x: number;
     y: number;
-  }>;
+  }[];
 }
 ```
-
-**Metadata:**
-- Automatically extracted from name and tags
-- Used for semantic matching
-- Not manually specified by user
-
-**Position Format:**
-- `team`: Which team this position is for
-- `role`: Goalkeeper or field player
-- `relativeIndex`: Index within role group (e.g., 2nd field player)
-- `x`, `y`: Coordinate positions (0-100)
 
 ## Field Configuration
 
@@ -351,6 +336,7 @@ const hasOverlap = (pos1: Position, pos2: Position): boolean => {
 **Required Fields:**
 ```typescript
 // All command results must have:
+- reasoning: string (Chain of Thought)
 - action: string (one of the defined types)
 - explanation: string
 
@@ -374,32 +360,30 @@ const playerExists = (id: string, boardState: BoardState): boolean => {
 ## AI Prompt Structure
 
 ### Sections
-1. Field Layout (coordinate system)
-2. Field Glossary (domain terminology)
-3. Tactical Knowledge (APC, DPC, Outlet, Press)
-4. Mode Context (game vs training)
-5. Field View Context (standard vs circle detail)
-6. Board State (all current positions)
-7. Available Formations
-8. Command (user input)
-9. Instructions (6 command options)
-10. Examples (sample commands)
-11. Constraints (validation rules)
+1. **Field Geometry Anchors** (Reference Points: Center, D, P-Spot)
+2. **Field View Context** (standard vs circle detail)
+3. **Tactical Knowledge** (APC, DPC, Outlet, Press)
+4. **Separated Board State** (Red GK, Red Field, Blue GK, Blue Field)
+5. **Mode** (GAME vs TRAINING)
+6. **Goal & Interfaces** (Strict TypeScript definitions)
+7. **Instructions** (Mode-specific: Game vs Training)
+8. **Critical Rules** (Reasoning, GK handling, JSON only)
 
 ### Mode-Specific Guidance
 
 **Game Mode:**
 ```
-- Fixed 11 players per team
-- Standard formations apply
-- Single ball typically
+- Focus: Match Scenarios
+- Actions: Standard Moves, Set Pieces, Tactical Phases
+- Single ball
 ```
 
 **Training Mode:**
 ```
-- Variable player counts allowed
-- Only reference players that exist in current state
+- Focus: Drills & Exercises
+- Actions: Standard Moves, Drills, Shapes
 - Multiple balls allowed
+- GKs excluded by default
 ```
 
 ## Error Codes & Messages
@@ -428,9 +412,10 @@ SAVE_ERROR: "Failed to save tactic"
 
 ## Examples
 
-### Example 1: Move Command
+### Example 1: Move Command (Game Mode)
 ```json
 {
+  "reasoning": "User wants to move red player 7 to center. Calculating center as 50,50.",
   "action": "move",
   "moves": [{
     "targetId": "R7",
@@ -441,9 +426,10 @@ SAVE_ERROR: "Failed to save tactic"
 }
 ```
 
-### Example 2: APC Setup
+### Example 2: APC Setup (Game Mode)
 ```json
 {
+  "reasoning": "User requested 2-castle PC attack. Configuring APC with 2 batteries.",
   "action": "set_piece",
   "type": "APC",
   "parameters": {
@@ -454,9 +440,10 @@ SAVE_ERROR: "Failed to save tactic"
 }
 ```
 
-### Example 3: Training Drill
+### Example 3: Training Drill (Training Mode)
 ```json
 {
+  "reasoning": "User wants 5v5 game. Excluding GKs. Selecting 5 field players per team.",
   "action": "drill",
   "type": "small_sided_game",
   "parameters": {
@@ -469,9 +456,10 @@ SAVE_ERROR: "Failed to save tactic"
 }
 ```
 
-### Example 4: Tactical Phase
+### Example 4: Tactical Phase (Game Mode)
 ```json
 {
+  "reasoning": "User wants Red Outlet. Identifying structure 'Back 4'.",
   "action": "tactical_phase",
   "type": "outlet",
   "team": "red",
@@ -480,26 +468,12 @@ SAVE_ERROR: "Failed to save tactic"
 }
 ```
 
-### Example 5: Shape Command
-```json
-{
-  "action": "shape",
-  "shape": {
-    "type": "circle",
-    "center": { "x": 50, "y": 50 },
-    "radius": 30,
-    "players": ["R1", "R2", "R3", "B1", "B2", "B3"]
-  },
-  "explanation": "Forming circle with 6 players"
-}
-```
-
 ## Version History
 
-**Current Version:** 3.0
+**Current Version:** 3.1 (Refactor)
 
 **Changes:**
+- 3.1: Added "Chain of Thought" (reasoning field), strict interface injection, prompt routing, separated player lists.
 - 3.0: Added Living Playbook, tactical phases (outlet/press), shootout
 - 2.0: Added set pieces (APC/DPC), drills, training mode
 - 1.0: Initial release with basic moves and formations
-

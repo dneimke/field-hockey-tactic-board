@@ -7,6 +7,7 @@ import SaveTacticModal from './components/SaveTacticModal';
 import LoadTacticModal from './components/LoadTacticModal';
 import PlaybookModal from './components/PlaybookModal';
 import EditTacticModal from './components/EditTacticModal';
+import HelpAndStorageModal from './components/HelpAndStorageModal';
 import HeaderToolbar from './components/HeaderToolbar';
 import CommandInput from './components/CommandInput';
 import TeamSettingsModal from './components/TeamSettingsModal';
@@ -104,6 +105,7 @@ const App: React.FC = () => {
   const [isLoadModalOpen, setIsLoadModalOpen] = useState(false);
   const [isPlaybookModalOpen, setIsPlaybookModalOpen] = useState(false);
   const [isEditTacticModalOpen, setIsEditTacticModalOpen] = useState(false);
+  const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
   const [editingTactic, setEditingTactic] = useState<SavedTactic | null>(null);
   const [isCommandInputOpen, setIsCommandInputOpen] = useState(false);
   const [isTeamSettingsModalOpen, setIsTeamSettingsModalOpen] = useState(false);
@@ -647,6 +649,7 @@ const App: React.FC = () => {
         user={user}
         onOpenAuth={() => setIsAuthModalOpen(true)}
         onSignOut={handleSignOut}
+        onOpenHelp={() => setIsHelpModalOpen(true)}
       />
 
       {/* Block board access if not authenticated */}
@@ -749,6 +752,10 @@ const App: React.FC = () => {
         }}
         onSave={handleUpdateTactic}
         tactic={editingTactic}
+      />
+      <HelpAndStorageModal
+        isOpen={isHelpModalOpen}
+        onClose={() => setIsHelpModalOpen(false)}
       />
       <TeamSettingsModal
         isOpen={isTeamSettingsModalOpen}
