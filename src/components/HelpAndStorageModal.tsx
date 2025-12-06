@@ -33,7 +33,7 @@ const HelpAndStorageModal: React.FC<HelpAndStorageModalProps> = ({ isOpen, onClo
           {/* Introduction */}
           <div className="bg-blue-900/30 border border-blue-800 rounded-lg p-4 text-blue-100">
             <p className="font-medium">
-              Every time you click <span className="font-bold text-white">Save Tactic</span>, the system automatically saves your work in two different ways to give you the best of both worlds.
+              The system uses two different saving methods depending on your goal: <span className="font-bold text-white">Animations</span> for movement sequences and <span className="font-bold text-white">Playbook</span> for static setups and AI.
             </p>
           </div>
 
@@ -44,7 +44,7 @@ const HelpAndStorageModal: React.FC<HelpAndStorageModalProps> = ({ isOpen, onClo
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                 </svg>
-                <h3 className="text-lg font-bold">Animations (Load Animation)</h3>
+                <h3 className="text-lg font-bold">Animations (Save Animation)</h3>
               </div>
               
               <ul className="space-y-3 text-gray-300 flex-1">
@@ -78,7 +78,7 @@ const HelpAndStorageModal: React.FC<HelpAndStorageModalProps> = ({ isOpen, onClo
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
                 </svg>
-                <h3 className="text-lg font-bold">Playbook (AI Memory)</h3>
+                <h3 className="text-lg font-bold">Playbook (Save to Playbook)</h3>
               </div>
               
               <ul className="space-y-3 text-gray-300 flex-1">

@@ -3,9 +3,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { SEED_TACTICS_RAW } from './seedTactics';
 import { getCurrentUser } from '../services/authService';
 import * as tacticService from '../services/tacticService';
+import { PLAYBOOK_STORAGE_KEY, SEEDED_FLAG_KEY } from '../constants';
 
-const STORAGE_KEY = 'hockey_saved_tactics';
-const SEEDED_FLAG_KEY = 'hockey_tactics_seeded';
+const STORAGE_KEY = PLAYBOOK_STORAGE_KEY;
 
 // Store current user ID to avoid repeated auth checks
 let currentUserId: string | null = null;

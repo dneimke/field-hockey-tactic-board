@@ -4,7 +4,8 @@ import { FIELD_CONFIGS } from '../config/fieldConfig';
 import { User } from 'firebase/auth';
 
 interface HeaderToolbarProps {
-  onSave: () => void;
+  onSaveAnimation: () => void;
+  onSavePlaybook: () => void;
   onLoad: () => void;
   onReset: () => void;
   onAICommand: () => void;
@@ -24,7 +25,8 @@ interface HeaderToolbarProps {
 }
 
 const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
-  onSave,
+  onSaveAnimation,
+  onSavePlaybook,
   onLoad,
   onReset,
   onAICommand,
@@ -172,9 +174,52 @@ const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
 
             {isMenuOpen && (
               <div className="absolute right-0 mt-2 w-56 bg-gray-800 rounded-lg shadow-xl py-2 border border-gray-700">
-                <div className="px-4 py-2 border-b border-gray-700">
-                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">File Operations</span>
+                {/* Animations Group */}
+                <div className="px-4 py-2 border-b border-gray-700 bg-gray-800/50">
+                  <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wider flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Animations
+                  </span>
                 </div>
+                <button
+                  onClick={() => handleAction(onLoad)}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors flex items-center gap-3 pl-6"
+                >
+                  Load Animation
+                </button>
+                <button
+                  onClick={() => handleAction(onSaveAnimation)}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors flex items-center gap-3 pl-6"
+                >
+                  Save Animation
+                </button>
+
+                {/* Playbook Group */}
+                <div className="px-4 py-2 border-y border-gray-700 bg-gray-800/50 mt-1">
+                  <span className="text-xs font-semibold text-purple-400 uppercase tracking-wider flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </svg>
+                    Playbook
+                  </span>
+                </div>
+                <button
+                  onClick={() => handleAction(onOpenPlaybook)}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors flex items-center gap-3 pl-6"
+                >
+                  Open Playbook
+                </button>
+                <button
+                  onClick={() => handleAction(onSavePlaybook)}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors flex items-center gap-3 pl-6"
+                >
+                  Save to Playbook
+                </button>
+
+                <div className="my-1 border-t border-gray-700"></div>
                 <button
                   onClick={() => handleAction(onOpenHelp)}
                   className="w-full text-left px-4 py-2 text-sm text-emerald-400 hover:bg-gray-700 transition-colors flex items-center gap-3"
@@ -183,33 +228,6 @@ const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   Saving & Storage Help
-                </button>
-                <button
-                  onClick={() => handleAction(onSave)}
-                  className="w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-700 transition-colors flex items-center gap-3"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                  </svg>
-                  Save Tactic
-                </button>
-                <button
-                  onClick={() => handleAction(onLoad)}
-                  className="w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-700 transition-colors flex items-center gap-3"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                  </svg>
-                  Load Animation
-                </button>
-                <button
-                  onClick={() => handleAction(onOpenPlaybook)}
-                  className="w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-700 transition-colors flex items-center gap-3"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                  </svg>
-                  Living Playbook
                 </button>
 
                 <div className="my-1 border-t border-gray-700"></div>
@@ -275,10 +293,7 @@ const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
                   <p className="text-xs text-gray-400 mt-0.5">Signed in</p>
                 </div>
 
-                {/* File Operations */}
-                <div className="px-4 py-2 border-b border-gray-700">
-                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">File Operations</span>
-                </div>
+                {/* Help Section */}
                 <button
                   onClick={() => handleAction(onOpenHelp)}
                   className="w-full text-left px-4 py-2 text-sm text-emerald-400 hover:bg-gray-700 transition-colors flex items-center gap-3"
@@ -288,32 +303,50 @@ const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
                   </svg>
                   Saving & Storage Help
                 </button>
-                <button
-                  onClick={() => handleAction(onSave)}
-                  className="w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-700 transition-colors flex items-center gap-3"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                  </svg>
-                  Save Tactic
-                </button>
+
+                {/* Animations Group */}
+                <div className="px-4 py-2 border-y border-gray-700 bg-gray-800/50">
+                  <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wider flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Animations
+                  </span>
+                </div>
                 <button
                   onClick={() => handleAction(onLoad)}
-                  className="w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-700 transition-colors flex items-center gap-3"
+                  className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors flex items-center gap-3 pl-6"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                  </svg>
                   Load Animation
                 </button>
                 <button
-                  onClick={() => handleAction(onOpenPlaybook)}
-                  className="w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-700 transition-colors flex items-center gap-3"
+                  onClick={() => handleAction(onSaveAnimation)}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors flex items-center gap-3 pl-6"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                  </svg>
-                  Living Playbook
+                  Save Animation
+                </button>
+
+                {/* Playbook Group */}
+                <div className="px-4 py-2 border-y border-gray-700 bg-gray-800/50 mt-1">
+                  <span className="text-xs font-semibold text-purple-400 uppercase tracking-wider flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </svg>
+                    Playbook
+                  </span>
+                </div>
+                <button
+                  onClick={() => handleAction(onOpenPlaybook)}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors flex items-center gap-3 pl-6"
+                >
+                  Open Playbook
+                </button>
+                <button
+                  onClick={() => handleAction(onSavePlaybook)}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors flex items-center gap-3 pl-6"
+                >
+                  Save to Playbook
                 </button>
 
                 {/* Settings */}

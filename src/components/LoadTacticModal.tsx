@@ -1,6 +1,7 @@
 // Fix: Implement the LoadTacticModal component to provide a UI for loading and managing saved tactics.
 import React, { useState, useEffect, useMemo } from "react";
 import { Tactic } from "../types";
+import { ANIMATIONS_STORAGE_KEY } from "../constants";
 
 interface LoadTacticModalProps {
   isOpen: boolean;
@@ -9,8 +10,6 @@ interface LoadTacticModalProps {
   onExport: (tactic: Tactic) => void;
   onImport: (onSuccess: () => void) => void;
 }
-
-const TACTICS_STORAGE_KEY = "hockey_tactics";
 
 const LoadTacticModal: React.FC<LoadTacticModalProps> = ({
   isOpen,
@@ -23,7 +22,7 @@ const LoadTacticModal: React.FC<LoadTacticModalProps> = ({
   const [searchTerm, setSearchTerm] = useState("");
 
   const refreshTactics = () => {
-    const tacticsJson = localStorage.getItem(TACTICS_STORAGE_KEY);
+    const tacticsJson = localStorage.getItem(ANIMATIONS_STORAGE_KEY);
     const savedTactics = tacticsJson ? JSON.parse(tacticsJson) : [];
     setTactics(savedTactics);
   };
@@ -59,7 +58,7 @@ const LoadTacticModal: React.FC<LoadTacticModalProps> = ({
       const updatedTactics = tactics.filter(
         (t) => t.name !== tacticNameToDelete
       );
-      localStorage.setItem(TACTICS_STORAGE_KEY, JSON.stringify(updatedTactics));
+      localStorage.setItem(ANIMATIONS_STORAGE_KEY, JSON.stringify(updatedTactics));
       refreshTactics();
     }
   };
@@ -149,7 +148,7 @@ const LoadTacticModal: React.FC<LoadTacticModalProps> = ({
             onClick={handleImportClick}
             className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-md font-semibold transition-colors"
           >
-            Import Tactic
+            Import Animation
           </button>
         </div>
       </div>

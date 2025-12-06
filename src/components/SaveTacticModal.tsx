@@ -12,6 +12,7 @@ interface SaveTacticModalProps {
   placeholderText: string;
   initialValue?: string;
   boardState?: BoardState;
+  mode: 'animation' | 'playbook';
 }
 
 const SaveTacticModal: React.FC<SaveTacticModalProps> = ({
@@ -23,6 +24,7 @@ const SaveTacticModal: React.FC<SaveTacticModalProps> = ({
   placeholderText,
   initialValue = "",
   boardState,
+  mode,
 }) => {
   const [tacticName, setTacticName] = useState(initialValue);
   const [tags, setTags] = useState("");
@@ -134,16 +136,23 @@ const SaveTacticModal: React.FC<SaveTacticModalProps> = ({
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     if (tacticName.trim()) {
-      // Parse tags from comma-separated string
-      const tagsArray = tags
-        .split(',')
-        .map(tag => tag.trim())
-        .filter(tag => tag.length > 0);
-      
-      // Extract metadata from name and tags (auto-detection)
-      const metadata = extractMetadataFromTags(tacticName.trim(), tagsArray);
-      
-      onSave(tacticName.trim(), tagsArray, tacticType, metadata);
+      if (mode === 'animation') {
+        // For animations, we don't need tags, type or metadata
+        // Pass defaults that satisfy the interface but won't be used by the animation saver
+        onSave(tacticName.trim(), [], 'full_scenario', undefined);
+      } else {
+        // Playbook save logic
+        // Parse tags from comma-separated string
+        const tagsArray = tags
+          .split(',')
+          .map(tag => tag.trim())
+          .filter(tag => tag.length > 0);
+        
+        // Extract metadata from name and tags (auto-detection)
+        const metadata = extractMetadataFromTags(tacticName.trim(), tagsArray);
+        
+        onSave(tacticName.trim(), tagsArray, tacticType, metadata);
+      }
     } else {
       alert("Please enter a name for the tactic.");
     }
@@ -200,7 +209,8 @@ const SaveTacticModal: React.FC<SaveTacticModalProps> = ({
             </p>
           </div>
           
-          {/* Tags Field */}
+          {/* Tags Field - Only for Playbook */}
+          {mode === 'playbook' && (
           <div className="mb-4">
             <div className="flex items-center gap-2 mb-2">
               <label
@@ -259,8 +269,10 @@ const SaveTacticModal: React.FC<SaveTacticModalProps> = ({
               Tag the team and phase this tactic is FOR. Examples: &quot;blue, dpc&quot; or &quot;red, apc, attack&quot;
             </p>
           </div>
+          )}
           
-          {/* Type Field */}
+          {/* Type Field - Only for Playbook */}
+          {mode === 'playbook' && (
           <div className="mb-4">
             <div className="flex items-center gap-2 mb-2">
               <label className="block text-sm font-medium text-gray-300">
@@ -321,6 +333,7 @@ const SaveTacticModal: React.FC<SaveTacticModalProps> = ({
               </p>
             )}
           </div>
+          )}
           
           <div className="mt-6 flex justify-end gap-4">
             <button

@@ -11,7 +11,13 @@ import HelpAndStorageModal from './components/HelpAndStorageModal';
 import HeaderToolbar from './components/HeaderToolbar';
 import CommandInput from './components/CommandInput';
 import TeamSettingsModal from './components/TeamSettingsModal';
-import { INITIAL_RED_TEAM, INITIAL_BLUE_TEAM, INITIAL_BALLS } from './constants';
+import {
+  INITIAL_RED_TEAM,
+  INITIAL_BLUE_TEAM,
+  INITIAL_BALLS,
+  ANIMATIONS_STORAGE_KEY
+} from './constants';
+import { migrateStorage } from './utils/storageMigration';
 import { Player, Ball, Position, Path, Tactic, BoardState, FieldType, SavedTactic } from './types';
 import { v4 as uuidv4 } from 'uuid';
 import { useMediaQuery } from './hooks/useMediaQuery';
@@ -23,7 +29,6 @@ import { subscribeToAuthState, signOutUser } from './services/authService';
 import { User } from 'firebase/auth';
 import AuthModal from './components/AuthModal';
 
-const TACTICS_STORAGE_KEY = 'hockey_tactics';
 
 const exportTacticToFile = (tactic: Tactic) => {
   const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(
@@ -102,6 +107,7 @@ const App: React.FC = () => {
 
   // Modal State
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  const [saveModalMode, setSaveModalMode] = useState<'animation' | 'playbook'>('animation');
   const [isLoadModalOpen, setIsLoadModalOpen] = useState(false);
   const [isPlaybookModalOpen, setIsPlaybookModalOpen] = useState(false);
   const [isEditTacticModalOpen, setIsEditTacticModalOpen] = useState(false);
@@ -129,6 +135,7 @@ const App: React.FC = () => {
 
   // Initialize auth state and subscribe to changes
   useEffect(() => {
+    migrateStorage();
     const unsubscribe = subscribeToAuthState(async (currentUser) => {
       setIsAuthInitializing(false);
       setUser(currentUser);
@@ -342,7 +349,7 @@ const App: React.FC = () => {
 
   // Save & Load
   const writeTacticToStorage = (tactic: Tactic) => {
-    const tacticsJson = localStorage.getItem(TACTICS_STORAGE_KEY);
+    const tacticsJson = localStorage.getItem(ANIMATIONS_STORAGE_KEY);
     const tactics: Tactic[] = tacticsJson ? JSON.parse(tacticsJson) : [];
 
     const existingIndex = tactics.findIndex((t) => t.name === tactic.name);
@@ -352,66 +359,69 @@ const App: React.FC = () => {
       tactics.push(tactic);
     }
 
-    localStorage.setItem(TACTICS_STORAGE_KEY, JSON.stringify(tactics));
+    localStorage.setItem(ANIMATIONS_STORAGE_KEY, JSON.stringify(tactics));
   };
 
   const handleSaveTactic = useCallback(
     async (name: string, tags: string[], type: 'single_team' | 'full_scenario', metadata?: SavedTactic['metadata']) => {
-      // Save as SavedTactic for playbook lookup
-      const currentBoardState: BoardState = { redTeam, blueTeam, balls, mode };
-      try {
-        await saveTacticToPlaybook(currentBoardState, name, tags, type, metadata);
-      } catch (error) {
-        console.error('Failed to save tactic to playbook:', error);
-        alert('Failed to save tactic. Please try again.');
-        return;
-      }
-
-      // Also save as Tactic for backward compatibility (animation frames)
-      let framesToSave = frames;
-      if (frames.length === 0) {
-        framesToSave = [{ redTeam, blueTeam, balls }];
-      }
-
-      const newTactic: Tactic = {
-        name,
-        frames: framesToSave,
-        paths,
-        fieldType,
-      };
-
-      const tacticsJson = localStorage.getItem(TACTICS_STORAGE_KEY);
-      const tactics: Tactic[] = tacticsJson ? JSON.parse(tacticsJson) : [];
-      const existing = tactics.find((t) => t.name === newTactic.name);
-
-      if (existing) {
-        setOverwriteConfirm({
-          message: `A tactic named "${newTactic.name}" already exists. Do you want to overwrite it?`,
-          onConfirm: () => {
-            writeTacticToStorage(newTactic);
-            setOverwriteConfirm(null);
-            setIsSaveModalOpen(false);
-          },
-          onCancel: () => setOverwriteConfirm(null),
-        });
+      if (saveModalMode === 'playbook') {
+        // Save as SavedTactic for playbook lookup
+        const currentBoardState: BoardState = { redTeam, blueTeam, balls, mode };
+        try {
+          await saveTacticToPlaybook(currentBoardState, name, tags, type, metadata);
+          setIsSaveModalOpen(false);
+        } catch (error) {
+          console.error('Failed to save tactic to playbook:', error);
+          alert('Failed to save tactic. Please try again.');
+          return;
+        }
       } else {
-        writeTacticToStorage(newTactic);
-        setIsSaveModalOpen(false);
+        // Save as Tactic for animation frames
+        let framesToSave = frames;
+        if (frames.length === 0) {
+          framesToSave = [{ redTeam, blueTeam, balls }];
+        }
+
+        const newTactic: Tactic = {
+          name,
+          frames: framesToSave,
+          paths,
+          fieldType,
+        };
+
+        const tacticsJson = localStorage.getItem(ANIMATIONS_STORAGE_KEY);
+        const tactics: Tactic[] = tacticsJson ? JSON.parse(tacticsJson) : [];
+        const existing = tactics.find((t) => t.name === newTactic.name);
+
+        if (existing) {
+          setOverwriteConfirm({
+            message: `An animation named "${newTactic.name}" already exists. Do you want to overwrite it?`,
+            onConfirm: () => {
+              writeTacticToStorage(newTactic);
+              setOverwriteConfirm(null);
+              setIsSaveModalOpen(false);
+            },
+            onCancel: () => setOverwriteConfirm(null),
+          });
+        } else {
+          writeTacticToStorage(newTactic);
+          setIsSaveModalOpen(false);
+        }
       }
     },
-    [redTeam, blueTeam, balls, paths, frames, mode, fieldType],
+    [redTeam, blueTeam, balls, paths, frames, mode, fieldType, saveModalMode],
   );
 
   const handleImportTactic = useCallback((onSuccess: () => void) => {
     importTacticFromFile(
       (tactic) => {
-        const tacticsJson = localStorage.getItem(TACTICS_STORAGE_KEY);
+        const tacticsJson = localStorage.getItem(ANIMATIONS_STORAGE_KEY);
         const tactics: Tactic[] = tacticsJson ? JSON.parse(tacticsJson) : [];
         const existing = tactics.find((t) => t.name === tactic.name);
 
         if (existing) {
           setOverwriteConfirm({
-            message: `A tactic named "${tactic.name}" already exists. Do you want to overwrite it?`,
+            message: `An animation named "${tactic.name}" already exists. Do you want to overwrite it?`,
             onConfirm: () => {
               writeTacticToStorage(tactic);
               setOverwriteConfirm(null);
@@ -633,7 +643,14 @@ const App: React.FC = () => {
   return (
     <div className="relative bg-gray-900 text-white min-h-screen flex flex-col font-sans overflow-hidden">
       <HeaderToolbar
-        onSave={() => setIsSaveModalOpen(true)}
+        onSaveAnimation={() => {
+          setSaveModalMode('animation');
+          setIsSaveModalOpen(true);
+        }}
+        onSavePlaybook={() => {
+          setSaveModalMode('playbook');
+          setIsSaveModalOpen(true);
+        }}
         onLoad={() => setIsLoadModalOpen(true)}
         onReset={resetBoard}
         onAICommand={() => setIsCommandInputOpen(true)}
@@ -726,10 +743,11 @@ const App: React.FC = () => {
         isOpen={isSaveModalOpen}
         onClose={() => setIsSaveModalOpen(false)}
         onSave={handleSaveTactic}
-        title="Save Tactic"
+        title={saveModalMode === 'animation' ? "Save Animation" : "Save to Playbook"}
         confirmButtonText="Save"
-        placeholderText="e.g., High Press Formation"
+        placeholderText={saveModalMode === 'animation' ? "e.g., Short Corner Variant A" : "e.g., High Press Formation"}
         boardState={boardState}
+        mode={saveModalMode}
       />
       <LoadTacticModal
         isOpen={isLoadModalOpen}
