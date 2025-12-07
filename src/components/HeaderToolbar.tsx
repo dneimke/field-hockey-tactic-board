@@ -11,9 +11,6 @@ interface HeaderToolbarProps {
   onToggleChat: () => void;
   fieldType: FieldType;
   onFieldTypeChange: (fieldType: FieldType) => void;
-  redTeamCount: number;
-  blueTeamCount: number;
-  onOpenTeamSettings: () => void;
   onOpenPlaybook: () => void;
   user: User | null;
   onOpenAuth: () => void;
@@ -29,9 +26,6 @@ const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
   onToggleChat,
   fieldType,
   onFieldTypeChange,
-  redTeamCount,
-  blueTeamCount,
-  onOpenTeamSettings,
   onOpenPlaybook,
   user,
   onOpenAuth,
@@ -64,41 +58,13 @@ const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
 
   return (
     <header className="h-14 bg-gray-900 border-b border-gray-800 flex items-center justify-between px-4 sticky top-0 z-40 w-full shadow-md">
-      {/* Left Section: Brand & Team Stats */}
+      {/* Left Section: Brand */}
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-1">
           <span className="font-bold text-xl text-white tracking-tight">Tactic</span>
           <span className="font-bold text-xl text-emerald-400 tracking-tight">Board</span>
         </div>
-
-        <div className="h-5 w-px bg-gray-700 mx-2 hidden md:block"></div>
-
-        {/* Live Counters */}
-        <button
-          onClick={onOpenTeamSettings}
-          className="flex items-center gap-3 text-sm font-medium text-gray-300 hover:text-white transition-colors group"
-          title="Manage Teams"
-        >
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-red-600"></span>
-              <span>Red</span>
-              <span className="bg-gray-800 text-gray-300 px-1.5 py-0.5 rounded text-xs border border-gray-700">{redTeamCount}</span>
-            </div>
-            <span className="text-gray-600 text-xs">vs</span>
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
-              <span>Blue</span>
-              <span className="bg-gray-800 text-gray-300 px-1.5 py-0.5 rounded text-xs border border-gray-700">{blueTeamCount}</span>
-            </div>
-          </div>
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-gray-500 group-hover:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
       </div>
-
-      {/* Center Section: Mode Description - Removed */}
 
       {/* Right Section: Controls & Actions */}
       <div className="flex items-center gap-4">
@@ -112,8 +78,6 @@ const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
           </svg>
           <span className="hidden md:inline">AI Copilot</span>
         </button>
-
-        {/* Mode Switch - Removed (Auto-inferred) */}
 
         {/* Settings Menu (only shown when not authenticated) */}
         {!user && (
@@ -311,15 +275,6 @@ const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
                 <div className="px-4 py-2 border-b border-gray-700">
                   <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Settings</span>
                 </div>
-                <button
-                  onClick={() => handleAction(onOpenTeamSettings)}
-                  className="w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-700 transition-colors flex items-center gap-3"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                  </svg>
-                  Team Settings
-                </button>
                 <div className="px-4 py-2">
                   <label className="text-xs text-gray-400 mb-1.5 block">Field Configuration</label>
                   <select

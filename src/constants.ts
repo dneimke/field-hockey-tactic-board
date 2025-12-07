@@ -1,5 +1,4 @@
 import { Player, Ball } from "./types";
-import { DEFAULT_GAME_PLAYER_COUNT, createGameModeTeam } from "./utils/playerManagement";
 
 // Storage Keys
 export const ANIMATIONS_STORAGE_KEY = 'hockey_animations';
@@ -116,6 +115,3 @@ export const DRAWING_DEFAULTS = {
   MIN_STROKE_WIDTH: 2,
   MAX_STROKE_WIDTH: 8,
 } as const;
-
-// Re-export for convenience
-export { DEFAULT_GAME_PLAYER_COUNT, createGameModeTeam };

@@ -9,7 +9,6 @@ import PlaybookModal from './components/PlaybookModal';
 import EditTacticModal from './components/EditTacticModal';
 import HelpAndStorageModal from './components/HelpAndStorageModal';
 import HeaderToolbar from './components/HeaderToolbar';
-import TeamSettingsModal from './components/TeamSettingsModal';
 import {
   INITIAL_RED_TEAM,
   INITIAL_BLUE_TEAM,
@@ -23,7 +22,6 @@ import { useMediaQuery } from './hooks/useMediaQuery';
 import { useChatSession } from './hooks/useChatSession';
 import ChatSidebar from './components/ChatSidebar';
 import { FIELD_CONFIGS, FieldConfig } from './config/fieldConfig';
-import { addPlayer as addPlayerUtil, removePlayer as removePlayerUtil, createInitialTeam } from './utils/playerManagement';
 import { saveTactic as saveTacticToPlaybook, savedTacticToMoves, updateTactic, setCurrentUserId } from './utils/tacticManager';
 import { subscribeToAuthState, signOutUser } from './services/authService';
 import { User } from 'firebase/auth';
@@ -114,7 +112,6 @@ const App: React.FC = () => {
   const [isEditTacticModalOpen, setIsEditTacticModalOpen] = useState(false);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
   const [editingTactic, setEditingTactic] = useState<SavedTactic | null>(null);
-  const [isTeamSettingsModalOpen, setIsTeamSettingsModalOpen] = useState(false);
   const [overwriteConfirm, setOverwriteConfirm] = useState<{
     message: string;
     onConfirm: () => void;
@@ -259,26 +256,6 @@ const App: React.FC = () => {
     setPlaybackState('idle');
   }, [clearAllPaths, mode]);
 
-  // Player management functions
-  const handleAddPlayer = useCallback((team: "red" | "blue") => {
-    if (mode === "game") return; // Cannot add players in game mode
-    
-    const currentTeam = team === "red" ? redTeam : blueTeam;
-    const newPlayer = addPlayerUtil(currentTeam, team);
-    const setter = team === "red" ? setRedTeam : setBlueTeam;
-    setter([...currentTeam, newPlayer]);
-  }, [mode, redTeam, blueTeam]);
-
-  const handleRemovePlayer = useCallback((playerId: string) => {
-    if (mode === "game") return; // Cannot remove players in game mode
-    
-    if (playerId.startsWith("R")) {
-      setRedTeam(removePlayerUtil(redTeam, playerId));
-    } else if (playerId.startsWith("B")) {
-      setBlueTeam(removePlayerUtil(blueTeam, playerId));
-    }
-  }, [mode, redTeam, blueTeam]);
-
   const handleModeChange = useCallback((newMode: "game" | "training") => {
     if (newMode === mode) return;
     
@@ -290,19 +267,6 @@ const App: React.FC = () => {
     }
     // Switching to training mode: keep current players
     setMode(newMode);
-  }, [mode]);
-
-  const handlePresetChange = useCallback((playerCount: number) => {
-    // Switch to training mode if not already
-    if (mode !== "training") {
-      setMode("training");
-    }
-    
-    // Create teams with specified player count
-    // For presets, include goalkeepers
-    const includeGK = playerCount >= 5; // Include GK for 5v5, 7v7, 11v11
-    setRedTeam(createInitialTeam("red", playerCount, includeGK));
-    setBlueTeam(createInitialTeam("blue", playerCount, includeGK));
   }, [mode]);
 
   // Animation Handlers
@@ -675,9 +639,6 @@ const App: React.FC = () => {
         onToggleChat={toggleChat}
         fieldType={fieldType}
         onFieldTypeChange={setFieldType}
-        redTeamCount={redTeam.length}
-        blueTeamCount={blueTeam.length}
-        onOpenTeamSettings={() => setIsTeamSettingsModalOpen(true)}
         onOpenPlaybook={() => setIsPlaybookModalOpen(true)}
         user={user}
         onOpenAuth={() => setIsAuthModalOpen(true)}
@@ -790,16 +751,6 @@ const App: React.FC = () => {
       <HelpAndStorageModal
         isOpen={isHelpModalOpen}
         onClose={() => setIsHelpModalOpen(false)}
-      />
-      <TeamSettingsModal
-        isOpen={isTeamSettingsModalOpen}
-        onClose={() => setIsTeamSettingsModalOpen(false)}
-        mode={mode}
-        redTeam={redTeam}
-        blueTeam={blueTeam}
-        onAddPlayer={handleAddPlayer}
-        onRemovePlayer={handleRemovePlayer}
-        onPresetChange={handlePresetChange}
       />
       {renderConfirmationModal()}
       

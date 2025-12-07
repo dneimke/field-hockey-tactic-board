@@ -6,7 +6,6 @@ export interface ModalState {
   isPlaybookModalOpen: boolean;
   isEditTacticModalOpen: boolean;
   isCommandInputOpen: boolean;
-  isTeamSettingsModalOpen: boolean;
   isAuthModalOpen: boolean;
 }
 
@@ -21,8 +20,6 @@ export interface ModalActions {
   closeEditTacticModal: () => void;
   openCommandInput: () => void;
   closeCommandInput: () => void;
-  openTeamSettingsModal: () => void;
-  closeTeamSettingsModal: () => void;
   openAuthModal: () => void;
   closeAuthModal: () => void;
 }
@@ -33,7 +30,6 @@ export const useModalState = (): ModalState & ModalActions => {
   const [isPlaybookModalOpen, setIsPlaybookModalOpen] = useState(false);
   const [isEditTacticModalOpen, setIsEditTacticModalOpen] = useState(false);
   const [isCommandInputOpen, setIsCommandInputOpen] = useState(false);
-  const [isTeamSettingsModalOpen, setIsTeamSettingsModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   return {
@@ -42,7 +38,6 @@ export const useModalState = (): ModalState & ModalActions => {
     isPlaybookModalOpen,
     isEditTacticModalOpen,
     isCommandInputOpen,
-    isTeamSettingsModalOpen,
     isAuthModalOpen,
     openSaveModal: useCallback(() => setIsSaveModalOpen(true), []),
     closeSaveModal: useCallback(() => setIsSaveModalOpen(false), []),
@@ -54,10 +49,7 @@ export const useModalState = (): ModalState & ModalActions => {
     closeEditTacticModal: useCallback(() => setIsEditTacticModalOpen(false), []),
     openCommandInput: useCallback(() => setIsCommandInputOpen(true), []),
     closeCommandInput: useCallback(() => setIsCommandInputOpen(false), []),
-    openTeamSettingsModal: useCallback(() => setIsTeamSettingsModalOpen(true), []),
-    closeTeamSettingsModal: useCallback(() => setIsTeamSettingsModalOpen(false), []),
     openAuthModal: useCallback(() => setIsAuthModalOpen(true), []),
     closeAuthModal: useCallback(() => setIsAuthModalOpen(false), []),
   };
 };
-

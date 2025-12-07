@@ -4,9 +4,8 @@ Welcome to the Field Hockey Tactical Whiteboard! This AI-powered tool helps coac
 
 ## Getting Started
 
-1.  **Select Mode**: Toggle between "Game Mode" (standard 11v11) and "Training Mode" (drills/practice).
-2.  **Type Command**: Enter your instruction in the text box at the bottom.
-3.  **Execute**: Press Enter or click the arrow. The board will update automatically.
+1.  **Type Command**: Enter your instruction in the text box at the bottom.
+2.  **Execute**: Press Enter or click the arrow. The board will update automatically.
 
 ## Basic Commands
 
@@ -36,7 +35,7 @@ You can request standard Attacking (APC) or Defensive (DPC) setups instantly.
 
 ### Training Drills & Small Sided Games
 
-In **Training Mode**, you can quickly organize players into zones.
+You can quickly organize players into zones for training exercises. The system will automatically switch to training mode for these commands.
 
 -   "Setup a 4v2 in the D"
 -   "3v3 possession game in midfield"
@@ -86,4 +85,3 @@ The Living Playbook allows you to save, organize, and reuse tactical configurati
 -   **Use Terminology**: The AI understands "D", "23m line", "p-spot", "castle", "injector".
 -   **Verify**: Always double-check the positions. You can drag players manually to fine-tune after the AI moves them.
 -   **Save Corrections**: If AI positioning is wrong, correct it and save to your playbook for future use.
-
