@@ -1,8 +1,9 @@
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../firebase';
-import { BoardState, CommandResult, Position, SavedTactic } from '../types';
+import { BoardState, CommandResult, Position, SavedTactic, TrainingSessionAction } from '../types';
 import { getGeminiConfig } from '../config/aiConfig';
 import { validatePosition, calculateShapePositions, ShapeConfig, resolveOverlaps } from './positionCalculator';
+import { resolveTrainingSession } from './trainingSessionResolver';
 import { FieldConfig } from '../config/fieldConfig';
 import { savedTacticToMoves, getAllTactics, flipTacticCoordinates } from './tacticManager';
 import { createPrompt } from './promptBuilder';
@@ -220,6 +221,25 @@ const searchSavedTactics = async (command: string): Promise<{
   return null;
 };
 
+/**
+ * Heuristic to detect if a command implies a training/drill context
+ */
+const detectIntent = (command: string): 'game' | 'training' | null => {
+  const normalized = command.toLowerCase();
+  const trainingKeywords = [
+    'drill', 'cone', 'exercise', 'possession', 
+    '3v3', '4v4', 'small sided', 'warmup', 'training',
+    'practice', 'grid', 'rondo'
+  ];
+  
+  // If any training keyword is present
+  if (trainingKeywords.some(k => normalized.includes(k))) {
+    return 'training';
+  }
+  
+  return null;
+};
+
 export const interpretCommand = async (
   command: string,
   boardState: BoardState,
@@ -228,6 +248,14 @@ export const interpretCommand = async (
   mode?: "game" | "training"
 ): Promise<CommandResult> => {
   try {
+    // Intent Detection: Check if command implies a mode change (e.g. user asks for "drill" in game mode)
+    const detectedIntent = detectIntent(command);
+    // If specific intent detected, use it. Otherwise fall back to UI mode.
+    // Note: If user is in Training mode, and asks for "press" (game keyword), we might want to stay in training 
+    // because you can practice a press in training. But if in Game mode and asks for "drill", we definitely want training.
+    // For now, we only auto-switch TO training.
+    const effectiveMode = detectedIntent === 'training' ? 'training' : mode;
+
     // Lookup First: Check saved tactics before using AI
     const match = await searchSavedTactics(command);
     
@@ -280,7 +308,7 @@ export const interpretCommand = async (
     }
     
     // No saved tactic found or validation failed, use AI
-    const prompt = createPrompt(command, boardState, fieldConfig, mode);
+    const prompt = createPrompt(command, boardState, fieldConfig, effectiveMode);
     const config = getGeminiConfig();
     const modelName = modelOverride || config.model;
 
@@ -304,8 +332,11 @@ export const interpretCommand = async (
       throw new Error(`AI returned invalid JSON. Response: ${text.substring(0, 200)}...`);
     }
 
-    // Handle Set Piece, Drill, and Tactical Phase Actions directly
-    if (aiResponse.action === 'set_piece' || aiResponse.action === 'drill' || aiResponse.action === 'tactical_phase') {
+    // Handle Set Piece, Drill, Tactical Phase, and Training Session Actions directly
+    if (aiResponse.action === 'set_piece' || 
+        aiResponse.action === 'drill' || 
+        aiResponse.action === 'tactical_phase' || 
+        aiResponse.action === 'training_session') {
       return aiResponse as CommandResult;
     }
 

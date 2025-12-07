@@ -72,13 +72,50 @@ interface TacticalPhaseAction {
 `;
 
 const TRAINING_INTERFACES = `
+// New Training Session Schema (Unified Field Model)
+interface EntityRequest {
+  type: "player" | "gk" | "cone" | "mini_goal" | "coach" | "ball";
+  count: number;
+  team?: "red" | "blue" | "neutral";
+  behavior?: "static" | "active";
+}
+
+interface Activity {
+  id: string;
+  name: string;
+  template_type: "ron_do" | "possession" | "shuttle" | "match_play" | "technical" | "small_sided_game";
+  location: {
+    anchor: "center_spot" | "top_D_left" | "top_D_right" | "top_D_center" | "baseline_center" | "goal_circle_bottom" | "sideline_middle_left" | "sideline_middle_right";
+    offset?: { x: number; y: number };
+    dimensions?: { width: number; height: number };
+  };
+  entities: EntityRequest[];
+  attributes?: any;
+}
+
+interface TrainingSessionRequest {
+  meta: {
+    context_type: "training_session";
+    pitch_view: "full_pitch" | "half_pitch" | "circle_detail";
+  };
+  activities: Activity[];
+}
+
+interface TrainingSessionAction {
+  reasoning: string;
+  action: "training_session";
+  request: TrainingSessionRequest;
+  explanation: string;
+}
+
+// Fallback for simple drills
 interface DrillAction {
   reasoning: string;
   action: 'drill';
   type: 'small_sided_game' | 'possession';
   parameters: {
-    attackers: number; // FIELD PLAYERS ONLY
-    defenders: number; // FIELD PLAYERS ONLY
+    attackers: number;
+    defenders: number;
     withGK: boolean;
     zone: 'attacking_25' | 'midfield' | 'defensive_circle' | 'full_field';
     shape?: 'wide' | 'narrow';
@@ -145,10 +182,17 @@ export const createPrompt = (
 const buildGeometrySection = (): string => {
   return `FIELD GEOMETRY ANCHORS (Reference Points):
 - Center Spot: {x: 50, y: 50}
-- Top of Shooting Circle (D): {x: 14.6, y: 50} and {x: 85.4, y: 50}
+- Top of Shooting Circle (D):
+  - Left: {x: 14.6, y: 35} (top_D_left)
+  - Right: {x: 85.4, y: 35} (top_D_right)
+  - Center: {x: 14.6, y: 50} or {x: 85.4, y: 50} (top_D_center)
 - Penalty Spot (P-Spot): {x: 11, y: 50} and {x: 89, y: 50}
 - Long Corner Marks (23m line): {x: 23, y: 0/100} and {x: 77, y: 0/100}
 - Goal Posts: {x: 0, y: 45/55} and {x: 100, y: 45/55}
+- Sidelines:
+  - Middle Left: {x: 50, y: 0} (sideline_middle_left)
+  - Middle Right: {x: 50, y: 100} (sideline_middle_right)
+- Goal Circle Bottom: {x: 14.6, y: 65} (goal_circle_bottom)
 `;
 };
 
@@ -204,13 +248,16 @@ const buildInstructionsSection = (isTrainingMode: boolean): string => {
 1. Focus on DRILLS and EXERCISES.
 2. You can place MULTIPLE balls if requested (use "ball", "ball_2", etc.).
 3. Available Actions:
-   - Option A: Standard Moves (move players/balls)
-   - Option B: DrillAction (small_sided_game, possession)
-   - Option C: ShapeAction (circle, line, grid)
+   - Option A: TrainingSessionAction (PREFERRED for multi-activity or complex drills)
+   - Option B: DrillAction (simple single activity)
+   - Option C: Standard Moves
    
-   FOR DRILLS:
-   - "5v5" means 5 FIELD PLAYERS per team.
-   - "withGK": false unless explicitly requested.
+   FOR TRAINING SESSIONS:
+   - Break down the request into 'activities'.
+   - Assign 'entities' (players, cones, goals, coaches) to each activity.
+   - Use 'anchor' points to position each activity.
+   
+   Example Anchors: "center_spot", "top_D_left", "top_D_right", "sideline_middle_left".
 `;
   } else {
     return `INSTRUCTIONS (GAME MODE):

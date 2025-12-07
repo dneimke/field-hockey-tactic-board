@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { BoardState, CommandResult, Position } from '../types';
 import { interpretCommand } from '../utils/commandInterpreter';
 import { calculateTacticalPositions } from '../utils/positionCalculator';
+import { resolveTrainingSession } from '../utils/trainingSessionResolver';
 import { FieldConfig } from '../config/fieldConfig';
 
 interface UseCommandExecutionProps {
@@ -9,6 +10,7 @@ interface UseCommandExecutionProps {
   onPieceMove: (id: string, position: Position, isStandardCoordinates?: boolean) => void;
   onAddFrame?: () => void;
   onResetBalls?: () => void;
+  onSetEquipment?: (equipment: any[]) => void;
   fieldConfig?: FieldConfig;
   mode?: "game" | "training";
   onModeChange?: (mode: "game" | "training") => void;
@@ -25,6 +27,7 @@ export const useCommandExecution = ({
   onPieceMove,
   onAddFrame,
   onResetBalls,
+  onSetEquipment,
   fieldConfig,
   mode,
   onModeChange,
@@ -49,8 +52,23 @@ export const useCommandExecution = ({
 
         let movesToExecute: Array<{ targetId: string; newPosition: Position }> = [];
 
+        // Handle Training Session (Unified Field Model)
+        if (result.action === 'training_session') {
+          // Use the resolver to get moves and equipment
+          const resolution = resolveTrainingSession(result.request, boardState);
+          movesToExecute = resolution.moves;
+          
+          // Set equipment state
+          if (onSetEquipment) {
+            onSetEquipment(resolution.equipment);
+          }
+          
+          // Equipment moves are handled by setting state (above) 
+          // and potentially by movesToExecute if we want to animate them moving
+          // For now, just setting state is enough as they will re-render at new positions
+        }
         // Handle Tactical Actions
-        if (result.action === 'set_piece' || result.action === 'drill' || result.action === 'tactical_phase') {
+        else if (result.action === 'set_piece' || result.action === 'drill' || result.action === 'tactical_phase') {
           movesToExecute = calculateTacticalPositions(result, boardState);
         } 
         // Handle Standard Actions
@@ -92,7 +110,7 @@ export const useCommandExecution = ({
           
           // Don't change mode if result came from saved tactic (they're already game tactics)
           if (!isSavedTactic) {
-            if (result.action === 'drill') {
+            if (result.action === 'drill' || result.action === 'training_session') {
               // Drill commands → switch to training mode
               onModeChange('training');
             } else if (result.action === 'set_piece' || result.action === 'tactical_phase') {
@@ -110,7 +128,7 @@ export const useCommandExecution = ({
         });
       }
     },
-    [boardState, onPieceMove, onAddFrame, onResetBalls, fieldConfig, mode, onModeChange]
+    [boardState, onPieceMove, onAddFrame, onResetBalls, onSetEquipment, fieldConfig, mode, onModeChange]
   );
 
   const clearError = useCallback(() => {
@@ -125,4 +143,3 @@ export const useCommandExecution = ({
     clearError,
   };
 };
-

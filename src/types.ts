@@ -17,7 +17,15 @@ export interface Ball {
   position: Position;
 }
 
-export type PieceType = Player | Ball;
+export interface Equipment {
+  id: string;
+  type: "cone" | "mini_goal" | "coach";
+  position: Position;
+  color?: string;
+  rotation?: number; // degrees, 0-360
+}
+
+export type PieceType = Player | Ball | Equipment;
 
 export interface Path {
   id: string;
@@ -31,6 +39,7 @@ export interface BoardState {
   redTeam: Player[];
   blueTeam: Player[];
   balls: Ball[];
+  equipment?: Equipment[];
   mode?: "game" | "training";
 }
 
@@ -127,8 +136,50 @@ export interface MoveAction extends BaseAction {
   moves: Move[];
 }
 
+// Training Session Request Types (Phase 1: Unified Field Model)
+export interface EntityRequest {
+  type: "player" | "gk" | "cone" | "mini_goal" | "coach" | "ball";
+  count: number;
+  team?: "red" | "blue" | "neutral";
+  behavior?: "static" | "active";
+}
+
+export interface Activity {
+  id: string;
+  name: string; // e.g., "GK Saving Drill"
+  template_type: "ron_do" | "possession" | "shuttle" | "match_play" | "technical" | "small_sided_game";
+  location: {
+    anchor: "center_spot" | "top_D_left" | "top_D_right" | "baseline_center" | "custom" | "sideline_middle_left" | "sideline_middle_right" | "goal_circle_bottom";
+    offset?: { x: number; y: number }; // Relative to anchor
+    dimensions?: { width: number; height: number }; // For bounding box
+    coordinate_system?: "relative_zone" | "absolute_offset";
+    center_x?: number; // For absolute_offset
+    center_y?: number; // For absolute_offset
+  };
+  entities: EntityRequest[];
+  attributes?: {
+    custom_dimensions?: { length: number; width: number; unit: "meters" };
+    goals?: { count: number; type: "mini_goals" };
+    [key: string]: any; // Allow for future extensions
+  };
+}
+
+export interface TrainingSessionRequest {
+  meta: {
+    context_type: "training_session";
+    pitch_view: "full_pitch" | "half_pitch" | "circle_detail";
+  };
+  activities: Activity[];
+}
+
+export interface TrainingSessionAction extends BaseAction {
+  action: "training_session";
+  request: TrainingSessionRequest;
+}
+
 export type CommandResult = 
   | MoveAction
   | SetPieceAction
   | DrillAction
-  | TacticalPhaseAction;
+  | TacticalPhaseAction
+  | TrainingSessionAction;

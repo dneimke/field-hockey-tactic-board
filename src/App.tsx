@@ -18,7 +18,7 @@ import {
   ANIMATIONS_STORAGE_KEY
 } from './constants';
 import { migrateStorage } from './utils/storageMigration';
-import { Player, Ball, Position, Path, Tactic, BoardState, FieldType, SavedTactic } from './types';
+import { Player, Ball, Position, Path, Tactic, BoardState, FieldType, SavedTactic, Equipment } from './types';
 import { v4 as uuidv4 } from 'uuid';
 import { useMediaQuery } from './hooks/useMediaQuery';
 import { useCommandExecution } from './hooks/useCommandExecution';
@@ -90,6 +90,7 @@ const App: React.FC = () => {
   const [redTeam, setRedTeam] = useState<Player[]>(INITIAL_RED_TEAM);
   const [blueTeam, setBlueTeam] = useState<Player[]>(INITIAL_BLUE_TEAM);
   const [balls, setBalls] = useState<Ball[]>(INITIAL_BALLS);
+  const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [paths, setPaths] = useState<Path[]>([]);
   const [mode, setMode] = useState<"game" | "training">("game");
   const [fieldType, setFieldType] = useState<FieldType>("standard");
@@ -174,6 +175,7 @@ const App: React.FC = () => {
     setRedTeam(Array.isArray(state.redTeam) ? state.redTeam : []);
     setBlueTeam(Array.isArray(state.blueTeam) ? state.blueTeam : []);
     setBalls(Array.isArray(state.balls) ? state.balls : INITIAL_BALLS);
+    setEquipment(Array.isArray(state.equipment) ? state.equipment : []);
   }, []);
 
   const handlePieceMove = useCallback(
@@ -203,6 +205,14 @@ const App: React.FC = () => {
             // Create new ball
             return [...prevBalls, { id, position: finalPosition }];
           }
+        });
+      } else if (id.startsWith('equipment_')) {
+        setEquipment((prevEquipment) => {
+          const existing = prevEquipment.find((e) => e.id === id);
+          if (existing) {
+            return prevEquipment.map((e) => (e.id === id ? { ...e, position: finalPosition } : e));
+          }
+          return prevEquipment;
         });
       } else {
         updatePiece(setRedTeam);
@@ -243,6 +253,7 @@ const App: React.FC = () => {
       setBlueTeam(INITIAL_BLUE_TEAM);
     }
     setBalls(INITIAL_BALLS);
+    setEquipment([]);
     clearAllPaths();
     setFrames([]);
     setCurrentFrame(0);
@@ -296,9 +307,9 @@ const App: React.FC = () => {
 
   // Animation Handlers
   const handleAddFrame = useCallback(() => {
-    const newFrame: BoardState = { redTeam, blueTeam, balls };
+    const newFrame: BoardState = { redTeam, blueTeam, balls, equipment };
     setFrames((prev) => [...prev, newFrame]);
-  }, [redTeam, blueTeam, balls]);
+  }, [redTeam, blueTeam, balls, equipment]);
 
   const handleGoToFrame = useCallback(
     (frameIndex: number) => {
@@ -366,7 +377,7 @@ const App: React.FC = () => {
     async (name: string, tags: string[], type: 'single_team' | 'full_scenario', metadata?: SavedTactic['metadata']) => {
       if (saveModalMode === 'playbook') {
         // Save as SavedTactic for playbook lookup
-        const currentBoardState: BoardState = { redTeam, blueTeam, balls, mode };
+        const currentBoardState: BoardState = { redTeam, blueTeam, balls, equipment, mode };
         try {
           await saveTacticToPlaybook(currentBoardState, name, tags, type, metadata);
           setIsSaveModalOpen(false);
@@ -379,7 +390,7 @@ const App: React.FC = () => {
         // Save as Tactic for animation frames
         let framesToSave = frames;
         if (frames.length === 0) {
-          framesToSave = [{ redTeam, blueTeam, balls }];
+          framesToSave = [{ redTeam, blueTeam, balls, equipment }];
         }
 
         const newTactic: Tactic = {
@@ -452,7 +463,8 @@ const App: React.FC = () => {
         ...frame,
         redTeam: Array.isArray(frame.redTeam) ? frame.redTeam : [],
         blueTeam: Array.isArray(frame.blueTeam) ? frame.blueTeam : [],
-        balls: Array.isArray(frame.balls) ? frame.balls : INITIAL_BALLS
+        balls: Array.isArray(frame.balls) ? frame.balls : INITIAL_BALLS,
+        equipment: Array.isArray(frame.equipment) ? frame.equipment : []
       }));
       
       setFrames(sanitizedFrames);
@@ -489,9 +501,10 @@ const App: React.FC = () => {
       redTeam,
       blueTeam,
       balls,
+      equipment,
       mode,
     }),
-    [redTeam, blueTeam, balls, mode]
+    [redTeam, blueTeam, balls, equipment, mode]
   );
 
   const handleLoadSavedTactic = useCallback(
@@ -541,6 +554,7 @@ const App: React.FC = () => {
       onPieceMove: handlePieceMove,
       onAddFrame: handleAddFrame,
       onResetBalls: handleResetBalls,
+      onSetEquipment: setEquipment,
       fieldConfig: currentFieldConfig,
       mode,
       onModeChange: handleModeChange,
@@ -576,7 +590,7 @@ const App: React.FC = () => {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isCommandInputOpen, isSaveModalOpen, isLoadModalOpen, clearError]);
 
-  const allPieces = useMemo(() => [...redTeam, ...blueTeam, ...balls], [redTeam, blueTeam, balls]);
+  const allPieces = useMemo(() => [...redTeam, ...blueTeam, ...balls, ...equipment], [redTeam, blueTeam, balls, equipment]);
 
   const transformedPieces = useMemo(() => {
     if (!isPortrait) return allPieces;

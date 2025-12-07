@@ -40,12 +40,24 @@ interface Ball {
 }
 ```
 
+### Equipment
+```typescript
+interface Equipment {
+  id: string;
+  type: "cone" | "mini_goal" | "coach";
+  position: Position;
+  color?: string;
+  rotation?: number; // degrees, 0-360
+}
+```
+
 ### BoardState
 ```typescript
 interface BoardState {
   redTeam: Player[];      // Array of red players
   blueTeam: Player[];     // Array of blue players
   balls: Ball[];          // Array of balls (1 in game mode, multiple in training)
+  equipment?: Equipment[]; // Array of training equipment
   mode?: "game" | "training";
 }
 ```
@@ -69,7 +81,45 @@ interface BaseAction {
 }
 ```
 
-### 1. Standard Moves (MoveAction)
+### 1. Training Session Action (Phase 1: Unified Field Model)
+This is the primary action for complex training scenarios.
+
+```typescript
+interface TrainingSessionAction extends BaseAction {
+  action: "training_session";
+  request: TrainingSessionRequest;
+}
+
+interface TrainingSessionRequest {
+  meta: {
+    context_type: "training_session";
+    pitch_view: "full_pitch" | "half_pitch" | "circle_detail";
+  };
+  activities: Activity[];
+}
+
+interface Activity {
+  id: string;
+  name: string; // e.g., "GK Saving Drill"
+  template_type: "ron_do" | "possession" | "shuttle" | "match_play" | "technical" | "small_sided_game";
+  location: {
+    anchor: "center_spot" | "top_D_left" | "top_D_right" | "baseline_center" | "custom";
+    offset?: { x: number; y: number }; // Relative to anchor
+    dimensions?: { width: number; height: number }; // For bounding box
+    coordinate_system?: "relative_zone" | "absolute_offset";
+  };
+  entities: EntityRequest[];
+}
+
+interface EntityRequest {
+  type: "player" | "gk" | "cone" | "mini_goal" | "coach";
+  count: number;
+  team?: "red" | "blue" | "neutral";
+  behavior?: "static" | "active";
+}
+```
+
+### 2. Standard Moves (MoveAction)
 ```typescript
 interface MoveAction extends BaseAction {
   action: 'move' | 'formation' | 'reset' | 'ball' | 'multiple';
@@ -89,7 +139,7 @@ interface MoveAction extends BaseAction {
 - `ball`: Ball movement
 - `multiple`: Complex multi-piece movement
 
-### 2. Set Piece Action
+### 3. Set Piece Action
 ```typescript
 interface SetPieceAction extends BaseAction {
   action: 'set_piece';
@@ -112,7 +162,7 @@ interface SetPieceAction extends BaseAction {
 }
 ```
 
-### 3. Drill Action
+### 4. Drill Action (Legacy/Simple)
 ```typescript
 interface DrillAction extends BaseAction {
   action: 'drill';
@@ -129,19 +179,7 @@ interface DrillAction extends BaseAction {
 }
 ```
 
-**Critical Rules:**
-- `attackers` and `defenders` count **FIELD PLAYERS ONLY** (goalkeepers excluded)
-- "5v5" means 5 field players per team, NOT including goalkeepers
-- `withGK` defaults to `false` unless explicitly requested
-- System automatically filters goalkeepers before selecting players
-
-**Zone Values:**
-- `attacking_25`: x = 75-100
-- `midfield`: x = 33.33-66.66
-- `defensive_circle`: x = 0-25
-- `full_field`: x = 0-100
-
-### 4. Tactical Phase Action
+### 5. Tactical Phase Action
 ```typescript
 interface TacticalPhaseAction extends BaseAction {
   action: 'tactical_phase';
@@ -152,25 +190,7 @@ interface TacticalPhaseAction extends BaseAction {
 }
 ```
 
-**Outlet Structures:**
-- `back_4`: Back 4 dish structure
-- `back_3`: Back 3 cup structure
-- `three_high`: Three high structure
-- `asymmetric_right`: Asymmetric right
-- `asymmetric_left`: Asymmetric left
-
-**Press Structures:**
-- `full_court`: Full court press
-- `half_court`: Half court zone
-- `w_press`: W-press structure
-- `split_vision`: Split vision press
-
-**Intensity Parameter:**
-- Range: 0-100
-- Affects height of press block
-- Higher value = more aggressive/higher press
-
-### 5. Shape Action
+### 6. Shape Action
 ```typescript
 interface ShapeAction extends BaseAction {
   action: 'shape';
@@ -187,7 +207,7 @@ interface ShapeAction extends BaseAction {
 }
 ```
 
-### 6. Composite Action
+### 7. Composite Action
 ```typescript
 interface CompositeAction extends BaseAction {
   action: 'composite';
@@ -381,9 +401,10 @@ const playerExists = (id: string, boardState: BoardState): boolean => {
 **Training Mode:**
 ```
 - Focus: Drills & Exercises
-- Actions: Standard Moves, Drills, Shapes
+- Actions: TrainingSessionAction, DrillAction, Standard Moves
 - Multiple balls allowed
 - GKs excluded by default
+- Anchor points for activity placement
 ```
 
 ## Error Codes & Messages
@@ -412,7 +433,42 @@ SAVE_ERROR: "Failed to save tactic"
 
 ## Examples
 
-### Example 1: Move Command (Game Mode)
+### Example 1: Training Session (New)
+```json
+{
+  "reasoning": "User wants a GK drill in the circle and a 3v3 game in midfield. Breaking into two activities.",
+  "action": "training_session",
+  "request": {
+    "meta": { "context_type": "training_session", "pitch_view": "full_pitch" },
+    "activities": [
+      {
+        "id": "gk_drill",
+        "name": "GK Saves",
+        "template_type": "technical",
+        "location": { "anchor": "top_D_left" },
+        "entities": [
+          { "type": "gk", "count": 1 },
+          { "type": "coach", "count": 1 },
+          { "type": "cone", "count": 4 }
+        ]
+      },
+      {
+        "id": "midfield_game",
+        "name": "3v3 Possession",
+        "template_type": "small_sided_game",
+        "location": { "anchor": "center_spot" },
+        "entities": [
+          { "type": "player", "count": 6 },
+          { "type": "mini_goal", "count": 2 }
+        ]
+      }
+    ]
+  },
+  "explanation": "Setting up GK drill in the D and 3v3 game in midfield"
+}
+```
+
+### Example 2: Move Command (Game Mode)
 ```json
 {
   "reasoning": "User wants to move red player 7 to center. Calculating center as 50,50.",
@@ -426,53 +482,12 @@ SAVE_ERROR: "Failed to save tactic"
 }
 ```
 
-### Example 2: APC Setup (Game Mode)
-```json
-{
-  "reasoning": "User requested 2-castle PC attack. Configuring APC with 2 batteries.",
-  "action": "set_piece",
-  "type": "APC",
-  "parameters": {
-    "batteries": 2,
-    "injectorSide": "left"
-  },
-  "explanation": "Setting up 2-battery APC with left injector"
-}
-```
-
-### Example 3: Training Drill (Training Mode)
-```json
-{
-  "reasoning": "User wants 5v5 game. Excluding GKs. Selecting 5 field players per team.",
-  "action": "drill",
-  "type": "small_sided_game",
-  "parameters": {
-    "attackers": 5,
-    "defenders": 5,
-    "withGK": false,
-    "zone": "midfield"
-  },
-  "explanation": "Setting up 5v5 game in midfield"
-}
-```
-
-### Example 4: Tactical Phase (Game Mode)
-```json
-{
-  "reasoning": "User wants Red Outlet. Identifying structure 'Back 4'.",
-  "action": "tactical_phase",
-  "type": "outlet",
-  "team": "red",
-  "structure": "back_4",
-  "explanation": "Setting up Back 4 outlet for red team"
-}
-```
-
 ## Version History
 
-**Current Version:** 3.1 (Refactor)
+**Current Version:** 4.0 (Unified Field Model)
 
 **Changes:**
+- 4.0: Added `TrainingSessionAction`, `Equipment` type, and `Activity` based architecture. Added named anchors for positioning.
 - 3.1: Added "Chain of Thought" (reasoning field), strict interface injection, prompt routing, separated player lists.
 - 3.0: Added Living Playbook, tactical phases (outlet/press), shootout
 - 2.0: Added set pieces (APC/DPC), drills, training mode
