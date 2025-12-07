@@ -113,8 +113,6 @@ const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
           <span className="hidden md:inline">AI Copilot</span>
         </button>
 
-        <div className="h-5 w-px bg-gray-700 hidden md:block"></div>
-
         {/* Mode Switch - Removed (Auto-inferred) */}
 
         {/* Settings Menu (only shown when not authenticated) */}
