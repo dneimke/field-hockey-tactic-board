@@ -534,7 +534,10 @@ const App: React.FC = () => {
   const handleCalibrate = useCallback(() => {
     const calibrationCommand = `place the following:    - a goal keeper in each goal  - a player at the top of each circle  - a cone in every corner  - and cones at each point where the 25 yard line or the centre line meets the sideline`;
     sendMessage(calibrationCommand);
-  }, [sendMessage]);
+    if (!isChatOpen) {
+      toggleChat();
+    }
+  }, [sendMessage, isChatOpen, toggleChat]);
 
   // Keyboard shortcut for command input
   useEffect(() => {
