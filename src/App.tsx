@@ -9,7 +9,6 @@ import PlaybookModal from './components/PlaybookModal';
 import EditTacticModal from './components/EditTacticModal';
 import HelpAndStorageModal from './components/HelpAndStorageModal';
 import HeaderToolbar from './components/HeaderToolbar';
-import CommandInput from './components/CommandInput';
 import TeamSettingsModal from './components/TeamSettingsModal';
 import {
   INITIAL_RED_TEAM,
@@ -21,7 +20,8 @@ import { migrateStorage } from './utils/storageMigration';
 import { Player, Ball, Position, Path, Tactic, BoardState, FieldType, SavedTactic, Equipment } from './types';
 import { v4 as uuidv4 } from 'uuid';
 import { useMediaQuery } from './hooks/useMediaQuery';
-import { useCommandExecution } from './hooks/useCommandExecution';
+import { useChatSession } from './hooks/useChatSession';
+import ChatSidebar from './components/ChatSidebar';
 import { FIELD_CONFIGS, FieldConfig } from './config/fieldConfig';
 import { addPlayer as addPlayerUtil, removePlayer as removePlayerUtil, createInitialTeam } from './utils/playerManagement';
 import { saveTactic as saveTacticToPlaybook, savedTacticToMoves, updateTactic, setCurrentUserId } from './utils/tacticManager';
@@ -114,7 +114,6 @@ const App: React.FC = () => {
   const [isEditTacticModalOpen, setIsEditTacticModalOpen] = useState(false);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
   const [editingTactic, setEditingTactic] = useState<SavedTactic | null>(null);
-  const [isCommandInputOpen, setIsCommandInputOpen] = useState(false);
   const [isTeamSettingsModalOpen, setIsTeamSettingsModalOpen] = useState(false);
   const [overwriteConfirm, setOverwriteConfirm] = useState<{
     message: string;
@@ -549,8 +548,14 @@ const App: React.FC = () => {
 
   // Command execution hook
   const currentFieldConfig: FieldConfig = FIELD_CONFIGS[fieldType];
-  const { executeCommand, isLoading: isCommandLoading, error: commandError, lastResult, clearError } =
-    useCommandExecution({
+  const { 
+    messages, 
+    isOpen: isChatOpen, 
+    toggleChat, 
+    sendMessage, 
+    isProcessing, 
+    clearHistory 
+  } = useChatSession({
       boardState,
       onPieceMove: handlePieceMove,
       onAddFrame: handleAddFrame,
@@ -559,7 +564,7 @@ const App: React.FC = () => {
       fieldConfig: currentFieldConfig,
       mode,
       onModeChange: handleModeChange,
-    });
+  });
 
   // Keyboard shortcut for command input
   useEffect(() => {
@@ -575,21 +580,20 @@ const App: React.FC = () => {
       }
 
       // `/` key to open command input
-      if (e.key === '/' && !isCommandInputOpen) {
+      if (e.key === '/' && !isChatOpen) {
         e.preventDefault();
-        setIsCommandInputOpen(true);
+        toggleChat();
       }
 
       // Escape to close (handled in CommandInput component too)
-      if (e.key === 'Escape' && isCommandInputOpen) {
-        setIsCommandInputOpen(false);
-        clearError();
+      if (e.key === 'Escape' && isChatOpen) {
+        toggleChat();
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isCommandInputOpen, isSaveModalOpen, isLoadModalOpen, clearError]);
+  }, [isChatOpen, isSaveModalOpen, isLoadModalOpen, toggleChat]);
 
   const allPieces = useMemo(() => [...redTeam, ...blueTeam, ...balls, ...equipment], [redTeam, blueTeam, balls, equipment]);
 
@@ -668,7 +672,7 @@ const App: React.FC = () => {
         }}
         onLoad={() => setIsLoadModalOpen(true)}
         onReset={resetBoard}
-        onAICommand={() => setIsCommandInputOpen(true)}
+        onToggleChat={toggleChat}
         fieldType={fieldType}
         onFieldTypeChange={setFieldType}
         redTeamCount={redTeam.length}
@@ -798,18 +802,16 @@ const App: React.FC = () => {
         onPresetChange={handlePresetChange}
       />
       {renderConfirmationModal()}
-      <CommandInput
-        isVisible={isCommandInputOpen}
-        onClose={() => {
-          setIsCommandInputOpen(false);
-          clearError();
-        }}
-        onExecute={executeCommand}
-        isLoading={isCommandLoading}
-        error={commandError}
-        lastExplanation={lastResult?.explanation}
-        disabled={isDrawingMode || playbackState === 'playing'}
+      
+      <ChatSidebar
+        isOpen={isChatOpen}
+        onClose={toggleChat}
+        messages={messages}
+        onSendMessage={sendMessage}
+        isProcessing={isProcessing}
+        onClearHistory={clearHistory}
       />
+
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}

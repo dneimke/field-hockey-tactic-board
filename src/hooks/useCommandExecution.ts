@@ -1,11 +1,11 @@
 import { useState, useCallback } from 'react';
-import { BoardState, CommandResult, Position } from '../types';
+import { BoardState, CommandResult, Position, Message } from '../types';
 import { interpretCommand } from '../utils/commandInterpreter';
 import { calculateTacticalPositions } from '../utils/positionCalculator';
 import { resolveTrainingSession } from '../utils/trainingSessionResolver';
 import { FieldConfig } from '../config/fieldConfig';
 
-interface UseCommandExecutionProps {
+export interface UseCommandExecutionProps {
   boardState: BoardState;
   onPieceMove: (id: string, position: Position, isStandardCoordinates?: boolean) => void;
   onAddFrame?: () => void;
@@ -39,16 +39,17 @@ export const useCommandExecution = ({
   });
 
   const executeCommand = useCallback(
-    async (command: string, model?: string) => {
+    async (command: string, model?: string, history: Message[] = []) => {
       if (!command.trim()) {
-        setState({ isLoading: false, error: 'Command cannot be empty', lastResult: null });
-        return;
+        const errorMsg = 'Command cannot be empty';
+        setState({ isLoading: false, error: errorMsg, lastResult: null });
+        throw new Error(errorMsg);
       }
 
       setState({ isLoading: true, error: null, lastResult: null });
 
       try {
-        const result = await interpretCommand(command, boardState, model, fieldConfig, mode);
+        const result = await interpretCommand(command, boardState, model, fieldConfig, mode, history);
 
         let movesToExecute: Array<{ targetId: string; newPosition: Position }> = [];
 
@@ -119,6 +120,8 @@ export const useCommandExecution = ({
             }
           }
         }
+
+        return result;
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : 'Failed to execute command';
         setState({
@@ -126,6 +129,7 @@ export const useCommandExecution = ({
           error: errorMessage,
           lastResult: null,
         });
+        throw new Error(errorMessage);
       }
     },
     [boardState, onPieceMove, onAddFrame, onResetBalls, onSetEquipment, fieldConfig, mode, onModeChange]

@@ -8,7 +8,7 @@ interface HeaderToolbarProps {
   onSavePlaybook: () => void;
   onLoad: () => void;
   onReset: () => void;
-  onAICommand: () => void;
+  onToggleChat: () => void;
   fieldType: FieldType;
   onFieldTypeChange: (fieldType: FieldType) => void;
   redTeamCount: number;
@@ -26,7 +26,7 @@ const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
   onSavePlaybook,
   onLoad,
   onReset,
-  onAICommand,
+  onToggleChat,
   fieldType,
   onFieldTypeChange,
   redTeamCount,
@@ -104,7 +104,7 @@ const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
       <div className="flex items-center gap-4">
         {/* AI Trigger */}
         <button
-          onClick={onAICommand}
+          onClick={onToggleChat}
           className="flex items-center gap-2 px-4 py-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-md text-sm font-medium shadow-lg shadow-indigo-900/20 transition-all hover:scale-105"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

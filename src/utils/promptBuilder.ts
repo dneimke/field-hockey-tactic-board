@@ -1,4 +1,4 @@
-import { BoardState, Player } from '../types';
+import { BoardState, Player, Message } from '../types';
 import { FieldConfig } from '../config/fieldConfig';
 
 // Interface Definitions
@@ -134,6 +134,7 @@ export const createPrompt = (
   boardState: BoardState,
   fieldConfig?: FieldConfig,
   mode?: 'game' | 'training',
+  history: Message[] = []
 ): string => {
   const currentMode = mode || boardState.mode || 'game';
   const isTrainingMode = currentMode === 'training';
@@ -152,6 +153,9 @@ export const createPrompt = (
   // 4. Tactical Knowledge
   const tacticalKnowledgeSection = buildTacticalKnowledgeSection();
 
+  // 5. History
+  const historySection = buildHistorySection(history);
+
   return `
     You are a field hockey tactic assistant. Your job is to interpret natural language commands and convert them into specific player movements on a field hockey pitch.
     
@@ -162,6 +166,8 @@ export const createPrompt = (
     ${tacticalKnowledgeSection}
     
     ${splitPlayerList}
+    
+    ${historySection}
     
     MODE: ${currentMode.toUpperCase()}
     
@@ -275,4 +281,18 @@ const buildInstructionsSection = (isTrainingMode: boolean): string => {
    - "Outlet"/"Press": Arrange full team structures.
 `;
   }
+};
+
+const buildHistorySection = (history: Message[]): string => {
+  if (history.length === 0) return '';
+  
+  const formattedHistory = history
+    .filter(msg => msg.role !== 'system') // Skip system messages
+    .slice(-10) // Only keep last 10 messages for context window
+    .map(msg => `${msg.role.toUpperCase()}: ${msg.content}`)
+    .join('\n');
+
+  return `CONVERSATION HISTORY (Use to resolve references like "them", "it", "wider", "higher"):
+${formattedHistory}
+`;
 };

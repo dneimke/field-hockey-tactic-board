@@ -1,6 +1,6 @@
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../firebase';
-import { BoardState, CommandResult, Position, SavedTactic, TrainingSessionAction } from '../types';
+import { BoardState, CommandResult, Position, SavedTactic, TrainingSessionAction, Message } from '../types';
 import { getGeminiConfig } from '../config/aiConfig';
 import { validatePosition, calculateShapePositions, ShapeConfig, resolveOverlaps } from './positionCalculator';
 import { resolveTrainingSession } from './trainingSessionResolver';
@@ -245,7 +245,8 @@ export const interpretCommand = async (
   boardState: BoardState,
   modelOverride?: string,
   fieldConfig?: FieldConfig,
-  mode?: "game" | "training"
+  mode?: "game" | "training",
+  history: Message[] = []
 ): Promise<CommandResult> => {
   try {
     // Intent Detection: Check if command implies a mode change (e.g. user asks for "drill" in game mode)
@@ -308,7 +309,7 @@ export const interpretCommand = async (
     }
     
     // No saved tactic found or validation failed, use AI
-    const prompt = createPrompt(command, boardState, fieldConfig, effectiveMode);
+    const prompt = createPrompt(command, boardState, fieldConfig, effectiveMode, history);
     const config = getGeminiConfig();
     const modelName = modelOverride || config.model;
 

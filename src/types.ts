@@ -183,3 +183,18 @@ export type CommandResult =
   | DrillAction
   | TacticalPhaseAction
   | TrainingSessionAction;
+
+// Chat / Conversational Types (Phase 2)
+export interface Message {
+  id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp: number;
+  actionResult?: CommandResult;
+}
+
+export interface ChatState {
+  messages: Message[];
+  isProcessing: boolean;
+  isOpen: boolean;
+}
