@@ -79,43 +79,49 @@ const calculateActivityPositions = (
   
   const allPlayers = [...allocatedResources.players, ...allocatedResources.goalkeepers];
   
-  if (activity.template_type === 'small_sided_game') {
-    const attackers = allocatedResources.players.slice(0, Math.ceil(allocatedResources.players.length / 2));
-    const defenders = allocatedResources.players.slice(Math.ceil(allocatedResources.players.length / 2));
-    const drillMoves = calculateDrillPositions(
-      { attackers: attackers.length, defenders: defenders.length, withGK: allocatedResources.goalkeepers.length > 0, zone: 'full_field' },
-      attackers,
-      defenders
-    );
-    const localMoves = drillMoves.map(move => {
-      const player = allPlayers.find(p => p.id === move.targetId);
-      if (!player) return null;
-      const index = allPlayers.findIndex(p => p.id === move.targetId);
-      const angle = (index / allPlayers.length) * 2 * Math.PI;
-      const radius = 8;
-      return {
-        targetId: move.targetId,
-        newPosition: {
-          x: Math.max(0, Math.min(100, activityCenter.x + radius * Math.cos(angle))),
-          y: Math.max(0, Math.min(100, activityCenter.y + radius * Math.sin(angle))),
-        },
-        explanation: `Positioned for ${activity.name}`,
-      };
-    }).filter((m): m is Move => m !== null);
-    moves.push(...localMoves);
-  } else {
-    allPlayers.forEach((player, index) => {
-      const angle = (index / allPlayers.length) * 2 * Math.PI;
-      const radius = 6;
-      moves.push({
-        targetId: player.id,
-        newPosition: {
-          x: Math.max(0, Math.min(100, activityCenter.x + radius * Math.cos(angle))),
-          y: Math.max(0, Math.min(100, activityCenter.y + radius * Math.sin(angle))),
-        },
-        explanation: `Positioned for ${activity.name}`,
+  // Guard against empty player list to prevent division by zero or NaN calculations
+  if (allPlayers.length > 0) {
+    if (activity.template_type === 'small_sided_game') {
+      const attackers = allocatedResources.players.slice(0, Math.ceil(allocatedResources.players.length / 2));
+      const defenders = allocatedResources.players.slice(Math.ceil(allocatedResources.players.length / 2));
+      const drillMoves = calculateDrillPositions(
+        { attackers: attackers.length, defenders: defenders.length, withGK: allocatedResources.goalkeepers.length > 0, zone: 'full_field' },
+        attackers,
+        defenders
+      );
+      const localMoves = drillMoves.map(move => {
+        const player = allPlayers.find(p => p.id === move.targetId);
+        if (!player) return null;
+        const index = allPlayers.findIndex(p => p.id === move.targetId);
+        // Ensure we don't divide by zero (though check above should prevent this)
+        const divisor = allPlayers.length || 1; 
+        const angle = (index / divisor) * 2 * Math.PI;
+        const radius = 8;
+        return {
+          targetId: move.targetId,
+          newPosition: {
+            x: Math.max(0, Math.min(100, activityCenter.x + radius * Math.cos(angle))),
+            y: Math.max(0, Math.min(100, activityCenter.y + radius * Math.sin(angle))),
+          },
+          explanation: `Positioned for ${activity.name}`,
+        };
+      }).filter((m): m is Move => m !== null);
+      moves.push(...localMoves);
+    } else {
+      allPlayers.forEach((player, index) => {
+        const divisor = allPlayers.length || 1;
+        const angle = (index / divisor) * 2 * Math.PI;
+        const radius = 6;
+        moves.push({
+          targetId: player.id,
+          newPosition: {
+            x: Math.max(0, Math.min(100, activityCenter.x + radius * Math.cos(angle))),
+            y: Math.max(0, Math.min(100, activityCenter.y + radius * Math.sin(angle))),
+          },
+          explanation: `Positioned for ${activity.name}`,
+        });
       });
-    });
+    }
   }
   
   for (const entityReq of activity.entities) {

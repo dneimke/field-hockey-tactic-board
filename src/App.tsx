@@ -287,6 +287,7 @@ const App: React.FC = () => {
       // Switching to game mode: ensure 11 players per team
       setRedTeam(INITIAL_RED_TEAM);
       setBlueTeam(INITIAL_BLUE_TEAM);
+      setEquipment([]);
     }
     // Switching to training mode: keep current players
     setMode(newMode);
@@ -670,9 +671,6 @@ const App: React.FC = () => {
         onAICommand={() => setIsCommandInputOpen(true)}
         fieldType={fieldType}
         onFieldTypeChange={setFieldType}
-        mode={mode}
-        onModeChange={handleModeChange}
-        modeDescription={mode === "game" ? "11 v 11 Regulation" : "Training Session"}
         redTeamCount={redTeam.length}
         blueTeamCount={blueTeam.length}
         onOpenTeamSettings={() => setIsTeamSettingsModalOpen(true)}

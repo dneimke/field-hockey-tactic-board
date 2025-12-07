@@ -11,9 +11,6 @@ interface HeaderToolbarProps {
   onAICommand: () => void;
   fieldType: FieldType;
   onFieldTypeChange: (fieldType: FieldType) => void;
-  mode: "game" | "training";
-  onModeChange: (mode: "game" | "training") => void;
-  modeDescription?: string;
   redTeamCount: number;
   blueTeamCount: number;
   onOpenTeamSettings: () => void;
@@ -32,9 +29,6 @@ const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
   onAICommand,
   fieldType,
   onFieldTypeChange,
-  mode,
-  onModeChange,
-  modeDescription,
   redTeamCount,
   blueTeamCount,
   onOpenTeamSettings,
@@ -104,12 +98,7 @@ const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
         </button>
       </div>
 
-      {/* Center Section: Mode Description */}
-      <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 hidden lg:block">
-        <span className="text-gray-400 text-sm font-medium tracking-wide">
-          {modeDescription || (mode === 'game' ? '11 v 11 Regulation' : 'Training Session')}
-        </span>
-      </div>
+      {/* Center Section: Mode Description - Removed */}
 
       {/* Right Section: Controls & Actions */}
       <div className="flex items-center gap-4">
@@ -126,37 +115,7 @@ const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
 
         <div className="h-5 w-px bg-gray-700 hidden md:block"></div>
 
-        {/* Mode Switch - Segmented Control */}
-        <div className="bg-gray-800 rounded-lg p-1 flex border border-gray-700">
-          <button
-            onClick={() => onModeChange("game")}
-            className={`px-3 py-1 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 ${
-              mode === "game" 
-                ? "bg-gray-700 text-white shadow-sm" 
-                : "text-gray-400 hover:text-gray-200"
-            }`}
-            title="Game Mode (11v11)"
-          >
-             <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Game
-          </button>
-          <button
-            onClick={() => onModeChange("training")}
-            className={`px-3 py-1 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 ${
-              mode === "training" 
-                ? "bg-gray-700 text-white shadow-sm" 
-                : "text-gray-400 hover:text-gray-200"
-            }`}
-            title="Training Mode (Flexible)"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-            </svg>
-            Training
-          </button>
-        </div>
+        {/* Mode Switch - Removed (Auto-inferred) */}
 
         {/* Settings Menu (only shown when not authenticated) */}
         {!user && (
