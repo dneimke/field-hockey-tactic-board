@@ -21,6 +21,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { useMediaQuery } from './hooks/useMediaQuery';
 import { useChatSession } from './hooks/useChatSession';
 import ChatSidebar from './components/ChatSidebar';
+import DebugPane from './components/DebugPane';
 import { FIELD_CONFIGS, FieldConfig } from './config/fieldConfig';
 import { saveTactic as saveTacticToPlaybook, savedTacticToMoves, updateTactic, setCurrentUserId } from './utils/tacticManager';
 import { subscribeToAuthState, signOutUser } from './services/authService';
@@ -530,6 +531,11 @@ const App: React.FC = () => {
       onModeChange: handleModeChange,
   });
 
+  const handleCalibrate = useCallback(() => {
+    const calibrationCommand = `place the following:    - a goal keeper in each goal  - a player at the top of each circle  - a cone in every corner  - and cones at each point where the 25 yard line or the centre line meets the sideline`;
+    sendMessage(calibrationCommand);
+  }, [sendMessage]);
+
   // Keyboard shortcut for command input
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -644,6 +650,7 @@ const App: React.FC = () => {
         onOpenAuth={() => setIsAuthModalOpen(true)}
         onSignOut={handleSignOut}
         onOpenHelp={() => setIsHelpModalOpen(true)}
+        onCalibrate={handleCalibrate}
       />
 
       {/* Block board access if not authenticated */}
@@ -712,6 +719,7 @@ const App: React.FC = () => {
             animationSpeed={animationSpeed}
             setAnimationSpeed={setAnimationSpeed}
           />
+          <DebugPane messages={messages} />
         </div>
       </div>
       )}

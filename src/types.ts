@@ -87,6 +87,7 @@ export interface Move {
 export interface BaseAction {
   reasoning?: string;
   explanation: string;
+  rawResponse?: string;
 }
 
 export interface SetPieceAction extends BaseAction {

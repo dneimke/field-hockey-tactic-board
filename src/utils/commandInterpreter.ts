@@ -10,7 +10,7 @@ import { createPrompt } from './promptBuilder';
 
 // Simple in-memory cache for AI matching responses
 // Key: normalized command, Value: { result, timestamp }
-const aiMatchCache = new Map<string, { result: { tactic: SavedTactic; needsFlip: boolean; reason: string } | null; timestamp: number }>();
+const aiMatchCache = new Map<string, { result: { tactic: SavedTactic; needsFlip: boolean; reason: string; rawResponse?: string } | null; timestamp: number }>();
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 // Clear cache when tactics are saved/deleted (called from external code)
@@ -68,7 +68,7 @@ const extractTeamFromCommand = (command: string): 'red' | 'blue' | null => {
 async function findTacticMatchViaAI(
   command: string,
   availableTactics: SavedTactic[]
-): Promise<{ tactic: SavedTactic; needsFlip: boolean; reason: string } | null> {
+): Promise<{ tactic: SavedTactic; needsFlip: boolean; reason: string; rawResponse?: string } | null> {
   if (availableTactics.length === 0) {
     return null;
   }
@@ -176,7 +176,8 @@ Now analyze the command and return the best match (or null if no relevant match)
     const matchResult = {
       tactic: matchedTactic,
       needsFlip: aiResponse.needsCoordinateFlip || false,
-      reason: aiResponse.reason || 'Matched via AI'
+      reason: aiResponse.reason || 'Matched via AI',
+      rawResponse: text
     };
 
     // Cache the result
@@ -201,6 +202,7 @@ Now analyze the command and return the best match (or null if no relevant match)
 const searchSavedTactics = async (command: string): Promise<{
   tactic: SavedTactic;
   needsFlip: boolean;
+  rawResponse?: string;
 } | null> => {
   const allTactics = await getAllTactics();
   if (allTactics.length === 0) {
@@ -212,7 +214,8 @@ const searchSavedTactics = async (command: string): Promise<{
   if (aiMatch) {
     return {
       tactic: aiMatch.tactic,
-      needsFlip: aiMatch.needsFlip
+      needsFlip: aiMatch.needsFlip,
+      rawResponse: aiMatch.rawResponse
     };
   }
   
@@ -303,7 +306,8 @@ export const interpretCommand = async (
             newPosition: m.newPosition,
             explanation: `Loaded from saved tactic: ${match.tactic.name}`
           })),
-          explanation: `Loaded saved tactic: ${match.tactic.name}`
+          explanation: `Loaded saved tactic: ${match.tactic.name}`,
+          rawResponse: match.rawResponse
         };
       }
     }
@@ -338,7 +342,7 @@ export const interpretCommand = async (
         aiResponse.action === 'drill' || 
         aiResponse.action === 'tactical_phase' || 
         aiResponse.action === 'training_session') {
-      return aiResponse as CommandResult;
+      return { ...aiResponse, rawResponse: text } as CommandResult;
     }
 
     let finalMoves: Array<{ targetId: string; newPosition: Position; explanation?: string }> = [];
@@ -415,7 +419,8 @@ export const interpretCommand = async (
     return {
       action: aiResponse.action === 'reset' ? 'reset' : 'multiple',
       moves: finalMoves,
-      explanation
+      explanation,
+      rawResponse: text
     };
 
   } catch (error: unknown) {

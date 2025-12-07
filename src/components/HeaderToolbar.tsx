@@ -16,6 +16,7 @@ interface HeaderToolbarProps {
   onOpenAuth: () => void;
   onSignOut: () => void;
   onOpenHelp: () => void;
+  onCalibrate: () => void;
 }
 
 const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
@@ -31,6 +32,7 @@ const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
   onOpenAuth,
   onSignOut,
   onOpenHelp,
+  onCalibrate,
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -170,6 +172,15 @@ const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
 
                 <div className="my-1 border-t border-gray-700"></div>
                 <button
+                  onClick={() => handleAction(onCalibrate)}
+                  className="w-full text-left px-4 py-2 text-sm text-yellow-400 hover:bg-gray-700 transition-colors flex items-center gap-3"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                  </svg>
+                  Calibrate System
+                </button>
+                <button
                   onClick={() => handleAction(onReset)}
                   className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-900/30 hover:text-red-300 transition-colors flex items-center gap-3"
                 >
@@ -296,6 +307,15 @@ const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
 
                 {/* Actions */}
                 <div className="my-1 border-t border-gray-700"></div>
+                <button
+                  onClick={() => handleAction(onCalibrate)}
+                  className="w-full text-left px-4 py-2 text-sm text-yellow-400 hover:bg-gray-700 transition-colors flex items-center gap-3"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                  </svg>
+                  Calibrate System
+                </button>
                 <button
                   onClick={() => handleAction(onReset)}
                   className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-900/30 hover:text-red-300 transition-colors flex items-center gap-3"
