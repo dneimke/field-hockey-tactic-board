@@ -9,6 +9,8 @@ interface ChatSidebarProps {
   onSendMessage: (text: string) => void;
   isProcessing: boolean;
   onClearHistory: () => void;
+  disabled?: boolean;
+  disabledReason?: string;
 }
 
 const ChatSidebar: React.FC<ChatSidebarProps> = ({
@@ -18,9 +20,12 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   onSendMessage,
   isProcessing,
   onClearHistory,
+  disabled = false,
+  disabledReason
 }) => {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -30,11 +35,25 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
     scrollToBottom();
   }, [messages, isOpen]);
 
+  // Auto-focus input when opened
+  useEffect(() => {
+    if (isOpen && !disabled) {
+      inputRef.current?.focus();
+    }
+  }, [isOpen, disabled]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isProcessing) return;
+    if (!input.trim() || isProcessing || disabled) return;
     onSendMessage(input);
     setInput('');
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      onClose();
+    }
   };
 
   return (
@@ -112,18 +131,28 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
 
         {/* Input */}
         <div className="p-4 border-t border-gray-800 bg-gray-900 shrink-0">
+          {disabled && disabledReason && (
+            <div className="mb-2 px-3 py-2 bg-yellow-900/30 border border-yellow-700/50 rounded text-xs text-yellow-200 flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              {disabledReason}
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="relative">
             <input
+              ref={inputRef}
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Describe a tactic or drill..."
-              disabled={isProcessing}
-              className="w-full bg-gray-800 text-white rounded-lg pl-4 pr-12 py-3 border border-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none placeholder-gray-500"
+              onKeyDown={handleKeyDown}
+              placeholder={disabled ? "Chat unavailable..." : "Describe a tactic or drill..."}
+              disabled={isProcessing || disabled}
+              className="w-full bg-gray-800 text-white rounded-lg pl-4 pr-12 py-3 border border-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none placeholder-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
             />
             <button
               type="submit"
-              disabled={!input.trim() || isProcessing}
+              disabled={!input.trim() || isProcessing || disabled}
               className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-indigo-600 text-white rounded-md hover:bg-indigo-500 disabled:opacity-50 disabled:hover:bg-indigo-600 transition-colors"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
