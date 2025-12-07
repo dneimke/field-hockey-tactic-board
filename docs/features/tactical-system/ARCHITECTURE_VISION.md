@@ -102,6 +102,14 @@ We are moving from `Player` objects to a generic `Entity` structure:
 *   **Types**: `player_outfield`, `player_gk`, `coach`, `equipment_cone`, `equipment_goal`.
 *   **Attributes**: Teams/Bibs, Roles, Counts.
 
+### D. Shared Coordinate System (The "Anchor" System)
+To ensure deterministic placement and avoid "spatial hallucination" by the LLM, we use a strict "Anchor" system.
+*   **Source of Truth:** `src/config/fieldAnchors.ts` defines all valid positions.
+*   **Usage:** The LLM selects an anchor (e.g., `"corner_top_left"`) instead of guessing coordinates.
+*   **Activity Grouping Heuristics:**
+    *   **Interaction:** If entities interact (e.g., 3v2 drill), they form ONE activity.
+    *   **Distribution:** If entities are static or distant (e.g., "cones in each corner"), they are split into SEPARATE activities.
+
 ---
 
 ## 5. Strategic Roadmap: Closing the Gap

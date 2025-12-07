@@ -85,7 +85,7 @@ interface Activity {
   name: string;
   template_type: "ron_do" | "possession" | "shuttle" | "match_play" | "technical" | "small_sided_game";
   location: {
-    anchor: "center_spot" | "top_D_left" | "top_D_right" | "top_D_center" | "baseline_center" | "goal_circle_bottom" | "sideline_middle_left" | "sideline_middle_right";
+    anchor: "center_spot" | "top_D_left" | "top_D_right" | "top_D_center" | "baseline_center" | "goal_circle_bottom" | "sideline_middle_left" | "sideline_middle_right" | "goal_left" | "goal_right" | "corner_top_left" | "corner_bottom_left" | "corner_top_right" | "corner_bottom_right" | "23m_left_top" | "23m_left_bottom" | "23m_right_top" | "23m_right_bottom" | "penalty_corner_injector_left_top" | "penalty_corner_injector_left_bottom" | "penalty_corner_injector_right_top" | "penalty_corner_injector_right_bottom";
     offset?: { x: number; y: number };
     dimensions?: { width: number; height: number };
   };
@@ -262,8 +262,14 @@ const buildInstructionsSection = (isTrainingMode: boolean): string => {
    - Break down the request into 'activities'.
    - Assign 'entities' (players, cones, goals, coaches) to each activity.
    - Use 'anchor' points to position each activity.
+
+   CRITICAL GROUPING RULES:
+   1. INTERACTING GROUPS: If players are working together (e.g., a 3v2 drill, a Rondo), group them into ONE activity at their center location.
+   2. DISTRIBUTED SETUPS: If items are static or far apart (e.g., "cones in each corner", "goals at both ends"), create SEPARATE activities for each specific location.
+      - CORRECT: 4 separate activities for "cones in corners".
+      - INCORRECT: 1 activity at center_spot with 4 cones.
    
-   Example Anchors: "center_spot", "top_D_left", "top_D_right", "sideline_middle_left".
+   Example Anchors: "center_spot", "top_D_left", "goal_left", "corner_top_left".
 `;
   } else {
     return `INSTRUCTIONS (GAME MODE):

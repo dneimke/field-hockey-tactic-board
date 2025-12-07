@@ -1,20 +1,10 @@
 import { TrainingSessionRequest, Activity, BoardState, Position, Player, Equipment, Move } from '../types';
 import { calculateDrillPositions } from './tacticalTemplates';
 import { v4 as uuidv4 } from 'uuid';
-
-const ANCHOR_POINTS: Record<string, Position> = {
-  center_spot: { x: 50, y: 50 },
-  top_D_left: { x: 14.6, y: 35 },
-  top_D_right: { x: 85.4, y: 35 },
-  top_D_center: { x: 14.6, y: 50 },
-  baseline_center: { x: 0, y: 50 },
-  goal_circle_bottom: { x: 14.6, y: 65 },
-  sideline_middle_left: { x: 50, y: 0 },
-  sideline_middle_right: { x: 50, y: 100 },
-};
+import { FIELD_ANCHORS } from '../config/fieldAnchors';
 
 const resolveAnchor = (anchor: string, offset?: { x: number; y: number }): Position => {
-  const basePoint = ANCHOR_POINTS[anchor] || ANCHOR_POINTS.center_spot;
+  const basePoint = FIELD_ANCHORS[anchor] || FIELD_ANCHORS.center_spot;
   if (offset) {
     return {
       x: Math.max(0, Math.min(100, basePoint.x + offset.x)),
@@ -96,7 +86,8 @@ const calculateActivityPositions = (
         // Ensure we don't divide by zero (though check above should prevent this)
         const divisor = allPlayers.length || 1; 
         const angle = (index / divisor) * 2 * Math.PI;
-        const radius = 8;
+        // Use 0 radius if only 1 total player, otherwise 8
+        const radius = allPlayers.length === 1 ? 0 : 8;
         return {
           targetId: move.targetId,
           newPosition: {
@@ -111,7 +102,8 @@ const calculateActivityPositions = (
       allPlayers.forEach((player, index) => {
         const divisor = allPlayers.length || 1;
         const angle = (index / divisor) * 2 * Math.PI;
-        const radius = 6;
+        // Use 0 radius if only 1 total player, otherwise 6
+        const radius = allPlayers.length === 1 ? 0 : 6;
         moves.push({
           targetId: player.id,
           newPosition: {
@@ -128,7 +120,8 @@ const calculateActivityPositions = (
     if (entityReq.type === 'cone') {
       for (let i = 0; i < entityReq.count; i++) {
         const angle = (i / entityReq.count) * 2 * Math.PI;
-        const radius = 5;
+        // Use 0 radius if count is 1, otherwise 5
+        const radius = entityReq.count === 1 ? 0 : 5;
         equipment.push({
           id: `equipment_${uuidv4()}`,
           type: 'cone',
