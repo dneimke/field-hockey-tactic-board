@@ -3,8 +3,8 @@ import React from "react";
 interface DrawingControlsProps {
   isDrawingMode: boolean;
   setIsDrawingMode: (isDrawing: boolean) => void;
-  drawingTool: "freehand" | "arrow" | "comment";
-  setDrawingTool: (tool: "freehand" | "arrow" | "comment") => void;
+  drawingTool: "freehand" | "arrow" | "comment" | "ball" | "cone" | "mini_goal";
+  setDrawingTool: (tool: "freehand" | "arrow" | "comment" | "ball" | "cone" | "mini_goal") => void;
   lineStyle: "solid" | "dashed";
   setLineStyle: (style: "solid" | "dashed") => void;
   undoLastPath: () => void;
@@ -147,6 +147,70 @@ const DrawingControls: React.FC<DrawingControlsProps> = ({
                 strokeLinejoin="round"
               >
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+              </svg>
+            </ControlButton>
+          </div>
+
+          <div className="hidden md:block h-8 w-px bg-gray-600"></div>
+
+          <div className="flex items-center gap-1 md:gap-2 bg-gray-700 rounded-md p-1">
+            <ControlButton
+              onClick={() => setDrawingTool("ball")}
+              isActive={drawingTool === "ball"}
+              title="Add Ball"
+              className="bg-transparent hover:bg-gray-600"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="10" />
+              </svg>
+            </ControlButton>
+            <ControlButton
+              onClick={() => setDrawingTool("cone")}
+              isActive={drawingTool === "cone"}
+              title="Add Cone"
+              className="bg-transparent hover:bg-gray-600"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M12 2 L22 20 L2 20 Z" fill="currentColor" />
+              </svg>
+            </ControlButton>
+            <ControlButton
+              onClick={() => setDrawingTool("mini_goal")}
+              isActive={drawingTool === "mini_goal"}
+              title="Add Mini Goal"
+              className="bg-transparent hover:bg-gray-600"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <line x1="3" y1="9" x2="21" y2="9" />
+                <line x1="9" y1="3" x2="9" y2="21" />
               </svg>
             </ControlButton>
           </div>

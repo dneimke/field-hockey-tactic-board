@@ -98,7 +98,7 @@ const App: React.FC = () => {
 
   // Drawing State
   const [isDrawingMode, setIsDrawingMode] = useState(false);
-  const [drawingTool, setDrawingTool] = useState<'freehand' | 'arrow' | 'comment'>('freehand');
+  const [drawingTool, setDrawingTool] = useState<'freehand' | 'arrow' | 'comment' | 'ball' | 'cone' | 'mini_goal'>('freehand');
   const [lineStyle, setLineStyle] = useState<'solid' | 'dashed'>('solid');
   const [drawingColor] = useState('#FFFFFF');
 
@@ -263,6 +263,72 @@ const App: React.FC = () => {
       setAnnotations((prev) => [...prev, newAnnotation]);
     },
     [isPortrait, drawingColor],
+  );
+
+  const handleAddBall = useCallback(
+    (position: Position) => {
+      if (playbackState === 'playing') return;
+      
+      let finalPosition = position;
+      if (isPortrait) {
+        // Reverse the transformation for saving state
+        finalPosition = {
+          x: position.y,
+          y: 100 - position.x,
+        };
+      }
+      
+      setBalls((prevBalls) => {
+        // Find the highest ball number
+        let maxBallNum = 0;
+        prevBalls.forEach((ball) => {
+          if (ball.id === 'ball') {
+            maxBallNum = Math.max(maxBallNum, 1);
+          } else if (ball.id.startsWith('ball_')) {
+            const num = parseInt(ball.id.replace('ball_', ''), 10);
+            if (!isNaN(num)) {
+              maxBallNum = Math.max(maxBallNum, num);
+            }
+          }
+        });
+        
+        // Generate new ball ID
+        const newBallId = maxBallNum === 0 ? 'ball' : `ball_${maxBallNum + 1}`;
+        
+        // Check if ball already exists
+        if (prevBalls.find((b) => b.id === newBallId)) {
+          return prevBalls; // Don't add duplicate
+        }
+        
+        return [...prevBalls, { id: newBallId, position: finalPosition }];
+      });
+    },
+    [isPortrait, playbackState],
+  );
+
+  const handleAddEquipment = useCallback(
+    (type: "cone" | "mini_goal", position: Position) => {
+      if (playbackState === 'playing') return;
+      
+      let finalPosition = position;
+      if (isPortrait) {
+        // Reverse the transformation for saving state
+        finalPosition = {
+          x: position.y,
+          y: 100 - position.x,
+        };
+      }
+      
+      const newEquipment: Equipment = {
+        id: `equipment_${uuidv4()}`,
+        type,
+        position: finalPosition,
+        color: type === 'cone' ? '#FFD700' : undefined, // Default yellow for cones
+      };
+      
+      setEquipment((prev) => [...prev, newEquipment]);
+    },
+    [isPortrait, playbackState],
   );
 
   const handleUpdateAnnotation = useCallback((id: string, text: string) => {
@@ -752,6 +818,8 @@ const App: React.FC = () => {
               paths={transformedPaths}
               onAddPath={handleAddPath}
               onAddAnnotation={handleAddAnnotation}
+              onAddBall={handleAddBall}
+              onAddEquipment={handleAddEquipment}
               color={drawingColor}
               strokeWidth={0.4}
             />

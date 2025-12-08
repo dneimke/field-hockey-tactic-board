@@ -4,10 +4,12 @@ import { COLORS } from "../constants";
 
 interface DrawingCanvasProps {
   isDrawingMode: boolean;
-  drawingTool: "freehand" | "arrow" | "comment";
+  drawingTool: "freehand" | "arrow" | "comment" | "ball" | "cone" | "mini_goal";
   paths: Path[];
   onAddPath: (path: Omit<Path, "id">) => void;
   onAddAnnotation?: (position: Position) => void;
+  onAddBall?: (position: Position) => void;
+  onAddEquipment?: (type: "cone" | "mini_goal", position: Position) => void;
   color: string;
   strokeWidth: number;
   lineStyle?: "solid" | "dashed";
@@ -29,6 +31,8 @@ const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   paths,
   onAddPath,
   onAddAnnotation,
+  onAddBall,
+  onAddEquipment,
   color,
   strokeWidth,
   lineStyle = "solid",
@@ -68,6 +72,22 @@ const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
         return; // Don't proceed with drawing logic
       }
       
+      if (drawingTool === "ball") {
+        // For ball tool, create ball immediately on click
+        if (onAddBall) {
+          onAddBall(point);
+        }
+        return; // Don't proceed with drawing logic
+      }
+      
+      if (drawingTool === "cone" || drawingTool === "mini_goal") {
+        // For equipment tools, create equipment immediately on click
+        if (onAddEquipment) {
+          onAddEquipment(drawingTool, point);
+        }
+        return; // Don't proceed with drawing logic
+      }
+      
       isDrawing.current = true;
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
       
@@ -80,7 +100,7 @@ const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   };
 
   const handlePointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
-    if (!isDrawingMode || !isDrawing.current || drawingTool === "comment") return;
+    if (!isDrawingMode || !isDrawing.current || drawingTool === "comment" || drawingTool === "ball" || drawingTool === "cone" || drawingTool === "mini_goal") return;
 
     const point = getPoint(e);
     if (point) {
