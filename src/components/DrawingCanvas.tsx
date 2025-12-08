@@ -9,6 +9,7 @@ interface DrawingCanvasProps {
   onAddPath: (path: Omit<Path, "id">) => void;
   color: string;
   strokeWidth: number;
+  lineStyle?: "solid" | "dashed";
 }
 
 const pointsToPathData = (points: Position[]): string => {
@@ -28,6 +29,7 @@ const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   onAddPath,
   color,
   strokeWidth,
+  lineStyle = "solid",
 }) => {
   const [currentPoints, setCurrentPoints] = useState<Position[]>([]);
   const isDrawing = useRef(false);
@@ -90,6 +92,7 @@ const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
         points: currentPoints,
         color,
         strokeWidth,
+        style: lineStyle,
       });
     }
     setCurrentPoints([]);
@@ -114,6 +117,7 @@ const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       strokeWidth: path.strokeWidth,
       strokeLinecap: "round" as const,
       strokeLinejoin: "round" as const,
+      strokeDasharray: path.style === "dashed" ? "1, 1" : undefined,
       fill: "none",
       markerEnd:
         path.type === "arrow"
@@ -159,6 +163,7 @@ const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
           points: currentPoints,
           color: color,
           strokeWidth: strokeWidth,
+          style: lineStyle,
         })}
     </svg>
   );

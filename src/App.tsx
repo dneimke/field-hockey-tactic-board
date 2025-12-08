@@ -97,6 +97,7 @@ const App: React.FC = () => {
   // Drawing State
   const [isDrawingMode, setIsDrawingMode] = useState(false);
   const [drawingTool, setDrawingTool] = useState<'freehand' | 'arrow'>('freehand');
+  const [lineStyle, setLineStyle] = useState<'solid' | 'dashed'>('solid');
   const [drawingColor] = useState('#FFFFFF');
 
   // Auth State
@@ -683,6 +684,7 @@ const App: React.FC = () => {
             <DrawingCanvas
               isDrawingMode={isDrawingMode}
               drawingTool={drawingTool}
+              lineStyle={lineStyle}
               paths={transformedPaths}
               onAddPath={handleAddPath}
               color={drawingColor}
@@ -706,6 +708,8 @@ const App: React.FC = () => {
             setIsDrawingMode={setIsDrawingMode}
             drawingTool={drawingTool}
             setDrawingTool={setDrawingTool}
+            lineStyle={lineStyle}
+            setLineStyle={setLineStyle}
             undoLastPath={undoLastPath}
             clearAllPaths={clearAllPaths}
             canUndo={paths.length > 0}

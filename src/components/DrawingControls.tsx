@@ -5,6 +5,8 @@ interface DrawingControlsProps {
   setIsDrawingMode: (isDrawing: boolean) => void;
   drawingTool: "freehand" | "arrow";
   setDrawingTool: (tool: "freehand" | "arrow") => void;
+  lineStyle: "solid" | "dashed";
+  setLineStyle: (style: "solid" | "dashed") => void;
   undoLastPath: () => void;
   clearAllPaths: () => void;
   canUndo: boolean;
@@ -52,6 +54,8 @@ const DrawingControls: React.FC<DrawingControlsProps> = ({
   setIsDrawingMode,
   drawingTool,
   setDrawingTool,
+  lineStyle,
+  setLineStyle,
   undoLastPath,
   clearAllPaths,
   canUndo,
@@ -124,6 +128,43 @@ const DrawingControls: React.FC<DrawingControlsProps> = ({
               >
                 <line x1="5" y1="12" x2="19" y2="12"></line>
                 <polyline points="12 5 19 12 12 19"></polyline>
+              </svg>
+            </ControlButton>
+          </div>
+
+            <div className="hidden md:block h-8 w-px bg-gray-600"></div>
+
+            <div className="flex items-center gap-1 md:gap-2 bg-gray-700 rounded-md p-1">
+            <ControlButton
+              onClick={() => setLineStyle("solid")}
+              isActive={lineStyle === "solid"}
+              title="Solid Line"
+              className="bg-transparent hover:bg-gray-600"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <line x1="4" y1="12" x2="20" y2="12" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </ControlButton>
+            <ControlButton
+              onClick={() => setLineStyle("dashed")}
+              isActive={lineStyle === "dashed"}
+              title="Dashed Line"
+              className="bg-transparent hover:bg-gray-600"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <line x1="4" y1="12" x2="20" y2="12" strokeWidth="2" strokeLinecap="round" strokeDasharray="4 4" />
               </svg>
             </ControlButton>
           </div>

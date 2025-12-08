@@ -33,6 +33,7 @@ export interface Path {
   points: Position[];
   color: string;
   strokeWidth: number;
+  style?: "solid" | "dashed";
 }
 
 export interface BoardState {

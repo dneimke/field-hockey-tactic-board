@@ -13,6 +13,8 @@ interface ControlsProps {
   setIsDrawingMode: (isDrawing: boolean) => void;
   drawingTool: "freehand" | "arrow";
   setDrawingTool: (tool: "freehand" | "arrow") => void;
+  lineStyle: "solid" | "dashed";
+  setLineStyle: (style: "solid" | "dashed") => void;
   undoLastPath: () => void;
   clearAllPaths: () => void;
   canUndo: boolean;
@@ -68,6 +70,8 @@ const Controls: React.FC<ControlsProps> = ({
   setIsDrawingMode,
   drawingTool,
   setDrawingTool,
+  lineStyle,
+  setLineStyle,
   undoLastPath,
   clearAllPaths,
   canUndo,
@@ -272,6 +276,34 @@ const Controls: React.FC<ControlsProps> = ({
                 <line x1="5" y1="12" x2="19" y2="12"></line>
                 <polyline points="12 5 19 12 12 19"></polyline>
               </svg>
+            </ControlButton>
+            <div className="h-6 w-px bg-gray-500 mx-1"></div>
+            <ControlButton
+              onClick={() => setLineStyle(lineStyle === "solid" ? "dashed" : "solid")}
+              title={lineStyle === "solid" ? "Switch to Dashed Line" : "Switch to Solid Line"}
+              className="bg-transparent hover:bg-gray-600 p-1.5"
+            >
+              {lineStyle === "solid" ? (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                   <line x1="4" y1="12" x2="20" y2="12" strokeWidth="2" strokeLinecap="round" strokeDasharray="4 4" />
+                </svg>
+              ) : (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                   <line x1="4" y1="12" x2="20" y2="12" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              )}
             </ControlButton>
             <div className="h-6 w-px bg-gray-500 mx-1"></div>
             <ControlButton
