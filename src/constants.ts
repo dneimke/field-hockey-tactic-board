@@ -11,11 +11,6 @@ export const LEGACY_SAVED_TACTICS_STORAGE_KEY = 'hockey_saved_tactics';
 
 // Drawing constants
 export const COLORS = ["#FFFFFF"];
-export const STROKE_WIDTHS = [
-  { name: "S", width: 2 },
-  { name: "M", width: 4 },
-  { name: "L", width: 8 },
-];
 
 // Helper function to check if a player is a goalkeeper
 export const isGoalkeeper = (player: Player): boolean => {

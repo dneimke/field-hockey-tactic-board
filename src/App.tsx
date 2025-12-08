@@ -98,7 +98,6 @@ const App: React.FC = () => {
   const [isDrawingMode, setIsDrawingMode] = useState(false);
   const [drawingTool, setDrawingTool] = useState<'freehand' | 'arrow'>('freehand');
   const [drawingColor] = useState('#FFFFFF');
-  const [strokeWidth, setStrokeWidth] = useState(4);
 
   // Auth State
   const [user, setUser] = useState<User | null>(null);
@@ -687,7 +686,7 @@ const App: React.FC = () => {
               paths={transformedPaths}
               onAddPath={handleAddPath}
               color={drawingColor}
-              strokeWidth={strokeWidth / 10}
+              strokeWidth={0.4}
             />
             {transformedPieces.map((piece) => (
               <Piece
@@ -707,8 +706,6 @@ const App: React.FC = () => {
             setIsDrawingMode={setIsDrawingMode}
             drawingTool={drawingTool}
             setDrawingTool={setDrawingTool}
-            strokeWidth={strokeWidth}
-            setStrokeWidth={setStrokeWidth}
             undoLastPath={undoLastPath}
             clearAllPaths={clearAllPaths}
             canUndo={paths.length > 0}

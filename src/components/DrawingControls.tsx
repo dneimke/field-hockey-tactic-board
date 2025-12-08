@@ -1,13 +1,10 @@
 import React from "react";
-import { STROKE_WIDTHS } from "../constants";
 
 interface DrawingControlsProps {
   isDrawingMode: boolean;
   setIsDrawingMode: (isDrawing: boolean) => void;
   drawingTool: "freehand" | "arrow";
   setDrawingTool: (tool: "freehand" | "arrow") => void;
-  strokeWidth: number;
-  setStrokeWidth: (width: number) => void;
   undoLastPath: () => void;
   clearAllPaths: () => void;
   canUndo: boolean;
@@ -55,8 +52,6 @@ const DrawingControls: React.FC<DrawingControlsProps> = ({
   setIsDrawingMode,
   drawingTool,
   setDrawingTool,
-  strokeWidth,
-  setStrokeWidth,
   undoLastPath,
   clearAllPaths,
   canUndo,
@@ -131,26 +126,6 @@ const DrawingControls: React.FC<DrawingControlsProps> = ({
                 <polyline points="12 5 19 12 12 19"></polyline>
               </svg>
             </ControlButton>
-          </div>
-
-          <div className="hidden md:block h-8 w-px bg-gray-600"></div>
-
-          <div className="flex items-center gap-1 md:gap-2 bg-gray-700 rounded-md p-1">
-            {STROKE_WIDTHS.map(({ name, width }) => (
-              <button
-                key={name}
-                onClick={() => setStrokeWidth(width)}
-                className={`px-3 py-1 text-sm font-bold rounded-md transition-colors ${
-                  strokeWidth === width
-                    ? "bg-indigo-600 text-white"
-                    : "text-gray-300 hover:bg-gray-600"
-                }`}
-                title={`Set stroke width to ${name}`}
-                aria-label={`Set stroke width to ${name}`}
-              >
-                {name}
-              </button>
-            ))}
           </div>
 
           <div className="hidden md:block h-8 w-px bg-gray-600"></div>

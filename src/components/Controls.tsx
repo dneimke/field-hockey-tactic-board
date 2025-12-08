@@ -1,5 +1,4 @@
 import React from "react";
-import { STROKE_WIDTHS } from "../constants";
 
 interface ControlsProps {
   onAddFrame: () => void;
@@ -14,8 +13,6 @@ interface ControlsProps {
   setIsDrawingMode: (isDrawing: boolean) => void;
   drawingTool: "freehand" | "arrow";
   setDrawingTool: (tool: "freehand" | "arrow") => void;
-  strokeWidth: number;
-  setStrokeWidth: (width: number) => void;
   undoLastPath: () => void;
   clearAllPaths: () => void;
   canUndo: boolean;
@@ -71,8 +68,6 @@ const Controls: React.FC<ControlsProps> = ({
   setIsDrawingMode,
   drawingTool,
   setDrawingTool,
-  strokeWidth,
-  setStrokeWidth,
   undoLastPath,
   clearAllPaths,
   canUndo,
@@ -278,23 +273,6 @@ const Controls: React.FC<ControlsProps> = ({
                 <polyline points="12 5 19 12 12 19"></polyline>
               </svg>
             </ControlButton>
-            <div className="h-6 w-px bg-gray-500 mx-1"></div>
-            <div className="flex items-center gap-1">
-              {STROKE_WIDTHS.map(({ name, width }) => (
-                <button
-                  key={name}
-                  onClick={() => setStrokeWidth(width)}
-                  className={`px-2 py-0.5 text-xs font-bold rounded-md transition-colors ${
-                    strokeWidth === width
-                      ? "bg-indigo-600 text-white"
-                      : "text-gray-300 hover:bg-gray-600"
-                  }`}
-                  title={`Set stroke width to ${name}`}
-                >
-                  {name}
-                </button>
-              ))}
-            </div>
             <div className="h-6 w-px bg-gray-500 mx-1"></div>
             <ControlButton
               onClick={undoLastPath}
