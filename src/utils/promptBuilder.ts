@@ -188,17 +188,18 @@ export const createPrompt = (
 const buildGeometrySection = (): string => {
   return `FIELD GEOMETRY ANCHORS (Reference Points):
 - Center Spot: {x: 50, y: 50}
-- Top of Shooting Circle (D):
-  - Left: {x: 14.6, y: 35} (top_D_left)
-  - Right: {x: 85.4, y: 35} (top_D_right)
-  - Center: {x: 14.6, y: 50} or {x: 85.4, y: 50} (top_D_center)
-- Penalty Spot (P-Spot): {x: 11, y: 50} and {x: 89, y: 50}
-- Long Corner Marks (23m line): {x: 23, y: 0/100} and {x: 77, y: 0/100}
-- Goal Posts: {x: 0, y: 45/55} and {x: 100, y: 45/55}
+- Top of Shooting Circle (D) - Apex:
+  - Left Goal: {x: 16, y: 50} (top_D_left)
+  - Right Goal: {x: 84, y: 50} (top_D_right)
+- Penalty Spot (P-Spot): {x: 7, y: 50} and {x: 93, y: 50}
+- 23m Lines (Quarter lines): {x: 25} and {x: 75}
+- Goal Posts: {x: 0, y: 47/53} and {x: 100, y: 47/53}
 - Sidelines:
   - Middle Left: {x: 50, y: 0} (sideline_middle_left)
   - Middle Right: {x: 50, y: 100} (sideline_middle_right)
-- Goal Circle Bottom: {x: 14.6, y: 65} (goal_circle_bottom)
+- Corners:
+  - Top Left: {x: 0, y: 0} (corner_top_left)
+  - Bottom Left: {x: 0, y: 100} (corner_bottom_left)
 `;
 };
 
