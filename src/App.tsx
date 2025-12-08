@@ -723,7 +723,9 @@ const App: React.FC = () => {
             animationSpeed={animationSpeed}
             setAnimationSpeed={setAnimationSpeed}
           />
-          <DebugPane messages={messages} />
+          {window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? (
+            <DebugPane messages={messages} />
+          ) : null}
         </div>
       </div>
       )}
