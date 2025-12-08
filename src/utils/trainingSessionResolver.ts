@@ -36,7 +36,13 @@ const allocateResources = (
     for (const entityReq of activity.entities) {
       if (entityReq.type === 'player') {
         const needed = entityReq.count;
-        const available = availableFieldPlayers.filter(p => !usedFieldPlayerIds.has(p.id));
+        let available = availableFieldPlayers.filter(p => !usedFieldPlayerIds.has(p.id));
+        
+        // Filter by team if specified (and not neutral)
+        if (entityReq.team && entityReq.team !== 'neutral') {
+          available = available.filter(p => p.team === entityReq.team);
+        }
+        
         for (let i = 0; i < Math.min(needed, available.length); i++) {
           const player = available[i];
           allocatedPlayers.push(player);
@@ -44,7 +50,13 @@ const allocateResources = (
         }
       } else if (entityReq.type === 'gk') {
         const needed = entityReq.count;
-        const available = availableGoalkeepers.filter(p => !usedGKIds.has(p.id));
+        let available = availableGoalkeepers.filter(p => !usedGKIds.has(p.id));
+        
+        // Filter by team if specified (and not neutral)
+        if (entityReq.team && entityReq.team !== 'neutral') {
+          available = available.filter(p => p.team === entityReq.team);
+        }
+        
         for (let i = 0; i < Math.min(needed, available.length); i++) {
           const gk = available[i];
           allocatedGKs.push(gk);
