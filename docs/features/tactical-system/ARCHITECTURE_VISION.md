@@ -48,6 +48,16 @@ The system will now accept a "Request" that defines the `context_type`:
 *   **`tactical_match_simulation`**: Enforces rules of the game (11v11, offside logic, legal formations).
 *   **`training_session`**: Flexible environment. Supports multiple simultaneous "Activities", arbitrary entity counts, and equipment.
 
+Here are the key pieces of information the LLM must extract or determine for each drill to effectively guide the rendering engine
+
+| Data Field | Purpose | Valid Values |
+| :--- | :--- | :--- |
+| **Context** | Sets the stage/rules | `training_session` |
+| **Template** | Defines default behavior | `ron_do`, `possession`, `shuttle`, `match_play`, `technical`, `small_sided_game` |
+| **Anchor** | Pins the drawing to the map | `center_spot`, `top_D_left`, `top_D_right`, `top_D_center`, `baseline_center`, `goal_circle_bottom`, `sideline_middle_left`, `sideline_middle_right`, `goal_left`, `goal_right`, `corner_top_left`, `corner_bottom_left`, `corner_top_right`, `corner_bottom_right`, `23m_left_top`, `23m_left_bottom`, `23m_right_top`, `23m_right_bottom`, `penalty_corner_injector_left_top`, `penalty_corner_injector_left_bottom`, `penalty_corner_injector_right_top`, `penalty_corner_injector_right_bottom`, `custom` |
+| **Entities** | The "actors" to draw | `player`, `gk`, `cone`, `mini_goal`, `coach`, `ball` |
+| **Dimensions** | Customizes the size | Custom dimensions (e.g., `30m x 20m`) |
+
 ### B. Request Structure (Example)
 The following pseudocode illustrates how the AI breaks down a complex training request into distinct, spatially-aware activities.
 
