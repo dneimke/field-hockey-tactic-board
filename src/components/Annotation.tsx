@@ -180,29 +180,24 @@ const Annotation: React.FC<AnnotationProps> = ({
         className="absolute left-1/2 transform -translate-x-1/2 pointer-events-none"
         style={{
           top: 'calc(100% - 1px)',
-          width: '14px',
-          height: '10px',
+          width: '12px',
+          height: '8px',
         }}
-        viewBox="0 0 14 10"
+        viewBox="0 0 12 8"
       >
-        {/* Smooth symmetric tail with rounded tip */}
+        {/* Simple triangle tail with matching border */}
         <path
-          d="M 0 0 L 5 0 Q 7 0 7 2 Q 7 4 7 6 Q 7 8 5 10 L 0 10 Z"
+          d="M 0 0 L 12 0 L 6 8 Z"
           fill="white"
           stroke={borderColor}
           strokeWidth="1"
-        />
-        <path
-          d="M 14 0 L 9 0 Q 7 0 7 2 Q 7 4 7 6 Q 7 8 9 10 L 14 10 Z"
-          fill="white"
-          stroke={borderColor}
-          strokeWidth="1"
+          strokeLinejoin="round"
         />
         {/* Small rounded dot at tip */}
         <circle
-          cx="7"
-          cy="9"
-          r="2"
+          cx="6"
+          cy="7.5"
+          r="1.5"
           fill={borderColor}
         />
       </svg>
