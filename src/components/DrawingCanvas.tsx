@@ -4,9 +4,10 @@ import { COLORS } from "../constants";
 
 interface DrawingCanvasProps {
   isDrawingMode: boolean;
-  drawingTool: "freehand" | "arrow";
+  drawingTool: "freehand" | "arrow" | "comment";
   paths: Path[];
   onAddPath: (path: Omit<Path, "id">) => void;
+  onAddAnnotation?: (position: Position) => void;
   color: string;
   strokeWidth: number;
   lineStyle?: "solid" | "dashed";
@@ -27,6 +28,7 @@ const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   drawingTool,
   paths,
   onAddPath,
+  onAddAnnotation,
   color,
   strokeWidth,
   lineStyle = "solid",
@@ -55,11 +57,20 @@ const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
 
   const handlePointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
     if (!isDrawingMode || e.button !== 0) return;
-    isDrawing.current = true;
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
-
+    
     const point = getPoint(e);
     if (point) {
+      if (drawingTool === "comment") {
+        // For comment tool, create annotation immediately on click
+        if (onAddAnnotation) {
+          onAddAnnotation(point);
+        }
+        return; // Don't proceed with drawing logic
+      }
+      
+      isDrawing.current = true;
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+      
       if (drawingTool === "arrow") {
         setCurrentPoints([point, point]);
       } else {
@@ -69,7 +80,7 @@ const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   };
 
   const handlePointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
-    if (!isDrawingMode || !isDrawing.current) return;
+    if (!isDrawingMode || !isDrawing.current || drawingTool === "comment") return;
 
     const point = getPoint(e);
     if (point) {

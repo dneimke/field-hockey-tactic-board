@@ -2,6 +2,7 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import Piece from './components/Piece';
 import DrawingCanvas from './components/DrawingCanvas';
+import AnnotationComponent from './components/Annotation';
 import Controls from './components/Controls';
 import SaveTacticModal from './components/SaveTacticModal';
 import LoadTacticModal from './components/LoadTacticModal';
@@ -16,7 +17,7 @@ import {
   ANIMATIONS_STORAGE_KEY
 } from './constants';
 import { migrateStorage } from './utils/storageMigration';
-import { Player, Ball, Position, Path, Tactic, BoardState, FieldType, SavedTactic, Equipment } from './types';
+import { Player, Ball, Position, Path, Tactic, BoardState, FieldType, SavedTactic, Equipment, Annotation } from './types';
 import { v4 as uuidv4 } from 'uuid';
 import { useMediaQuery } from './hooks/useMediaQuery';
 import { useChatSession } from './hooks/useChatSession';
@@ -91,12 +92,13 @@ const App: React.FC = () => {
   const [balls, setBalls] = useState<Ball[]>(INITIAL_BALLS);
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [paths, setPaths] = useState<Path[]>([]);
+  const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [mode, setMode] = useState<"game" | "training">("game");
   const [fieldType, setFieldType] = useState<FieldType>("standard");
 
   // Drawing State
   const [isDrawingMode, setIsDrawingMode] = useState(false);
-  const [drawingTool, setDrawingTool] = useState<'freehand' | 'arrow'>('freehand');
+  const [drawingTool, setDrawingTool] = useState<'freehand' | 'arrow' | 'comment'>('freehand');
   const [lineStyle, setLineStyle] = useState<'solid' | 'dashed'>('solid');
   const [drawingColor] = useState('#FFFFFF');
 
@@ -241,6 +243,56 @@ const App: React.FC = () => {
   const undoLastPath = useCallback(() => setPaths((prev) => prev.slice(0, -1)), []);
   const clearAllPaths = useCallback(() => setPaths([]), []);
 
+  const handleAddAnnotation = useCallback(
+    (position: Position) => {
+      let finalPosition = position;
+      if (isPortrait) {
+        // Reverse the transformation for saving state
+        finalPosition = {
+          x: position.y,
+          y: 100 - position.x,
+        };
+      }
+      const newAnnotation: Annotation = {
+        id: uuidv4(),
+        position: finalPosition,
+        text: '', // Empty initially, will be edited immediately
+        color: drawingColor,
+        createdAt: Date.now(),
+      };
+      setAnnotations((prev) => [...prev, newAnnotation]);
+    },
+    [isPortrait, drawingColor],
+  );
+
+  const handleUpdateAnnotation = useCallback((id: string, text: string) => {
+    setAnnotations((prev) =>
+      prev.map((ann) => (ann.id === id ? { ...ann, text } : ann))
+    );
+  }, []);
+
+  const handleDeleteAnnotation = useCallback((id: string) => {
+    setAnnotations((prev) => prev.filter((ann) => ann.id !== id));
+  }, []);
+
+  const handleAnnotationMove = useCallback(
+    (id: string, position: Position, isStandardCoordinates: boolean = false) => {
+      let finalPosition = position;
+      // Only reverse transform if position is in display coordinates (from dragging)
+      if (!isStandardCoordinates && isPortrait) {
+        // Reverse the transformation for saving state
+        finalPosition = {
+          x: position.y,
+          y: 100 - position.x,
+        };
+      }
+      setAnnotations((prev) =>
+        prev.map((ann) => (ann.id === id ? { ...ann, position: finalPosition } : ann))
+      );
+    },
+    [isPortrait],
+  );
+
   const resetBoard = useCallback(() => {
     if (mode === "game") {
       setRedTeam(INITIAL_RED_TEAM);
@@ -252,6 +304,7 @@ const App: React.FC = () => {
     setBalls(INITIAL_BALLS);
     setEquipment([]);
     clearAllPaths();
+    setAnnotations([]);
     setFrames([]);
     setCurrentFrame(0);
     setPlaybackState('idle');
@@ -362,6 +415,7 @@ const App: React.FC = () => {
           name,
           frames: framesToSave,
           paths,
+          annotations: annotations.length > 0 ? annotations : undefined,
           fieldType,
         };
 
@@ -385,7 +439,7 @@ const App: React.FC = () => {
         }
       }
     },
-    [redTeam, blueTeam, balls, paths, frames, mode, fieldType, saveModalMode],
+    [redTeam, blueTeam, balls, paths, annotations, frames, mode, fieldType, saveModalMode],
   );
 
   const handleImportTactic = useCallback((onSuccess: () => void) => {
@@ -422,6 +476,8 @@ const App: React.FC = () => {
   const handleLoadTactic = useCallback(
     (tactic: Tactic) => {
       setPaths(tactic.paths);
+      // Restore annotations if present
+      setAnnotations(tactic.annotations || []);
       
       // Sanitize frames to ensure all properties exist and are arrays
       const sanitizedFrames = tactic.frames.map(frame => ({
@@ -586,6 +642,14 @@ const App: React.FC = () => {
     }));
   }, [paths, isPortrait, transformPositionForPortrait]);
 
+  const transformedAnnotations = useMemo(() => {
+    if (!isPortrait) return annotations;
+    return annotations.map((ann) => ({
+      ...ann,
+      position: transformPositionForPortrait(ann.position),
+    }));
+  }, [annotations, isPortrait, transformPositionForPortrait]);
+
   const renderConfirmationModal = () => {
     if (!overwriteConfirm) return null;
     return (
@@ -687,9 +751,21 @@ const App: React.FC = () => {
               lineStyle={lineStyle}
               paths={transformedPaths}
               onAddPath={handleAddPath}
+              onAddAnnotation={handleAddAnnotation}
               color={drawingColor}
               strokeWidth={0.4}
             />
+            {transformedAnnotations.map((annotation) => (
+              <AnnotationComponent
+                key={annotation.id}
+                annotation={annotation}
+                onMove={handleAnnotationMove}
+                onUpdate={handleUpdateAnnotation}
+                onDelete={handleDeleteAnnotation}
+                containerRef={boardRef}
+                isPortrait={isPortrait}
+              />
+            ))}
             {transformedPieces.map((piece) => (
               <Piece
                 key={piece.id}

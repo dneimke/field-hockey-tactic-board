@@ -36,6 +36,14 @@ export interface Path {
   style?: "solid" | "dashed";
 }
 
+export interface Annotation {
+  id: string;
+  position: Position;
+  text: string;
+  color: string; // Use drawing color
+  createdAt: number; // timestamp for ordering
+}
+
 export interface BoardState {
   redTeam: Player[];
   blueTeam: Player[];
@@ -50,6 +58,7 @@ export interface Tactic {
   name: string;
   frames: BoardState[];
   paths: Path[];
+  annotations?: Annotation[]; // Optional for backward compatibility
   fieldType?: FieldType;
 }
 

@@ -11,8 +11,8 @@ interface ControlsProps {
   setAnimationSpeed: (speed: number) => void;
   isDrawingMode: boolean;
   setIsDrawingMode: (isDrawing: boolean) => void;
-  drawingTool: "freehand" | "arrow";
-  setDrawingTool: (tool: "freehand" | "arrow") => void;
+  drawingTool: "freehand" | "arrow" | "comment";
+  setDrawingTool: (tool: "freehand" | "arrow" | "comment") => void;
   lineStyle: "solid" | "dashed";
   setLineStyle: (style: "solid" | "dashed") => void;
   undoLastPath: () => void;
@@ -275,6 +275,25 @@ const Controls: React.FC<ControlsProps> = ({
               >
                 <line x1="5" y1="12" x2="19" y2="12"></line>
                 <polyline points="12 5 19 12 12 19"></polyline>
+              </svg>
+            </ControlButton>
+            <ControlButton
+              onClick={() => setDrawingTool("comment")}
+              isActive={drawingTool === "comment"}
+              title="Comment Tool"
+              className="bg-transparent hover:bg-gray-600 p-1.5"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
               </svg>
             </ControlButton>
             <div className="h-6 w-px bg-gray-500 mx-1"></div>
