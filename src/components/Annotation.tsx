@@ -83,21 +83,20 @@ const Annotation: React.FC<AnnotationProps> = ({
   const bubbleY = Math.max(5, anchorY - 8); // Position bubble above anchor, but not too close to top
 
   const baseClasses =
-    'absolute transform -translate-x-1/2 flex flex-col shadow-lg select-none touch-none z-30';
+    'absolute transform -translate-x-1/2 flex flex-col select-none touch-none z-30';
   const draggingClasses = isDragging
     ? 'cursor-grabbing scale-105'
     : 'cursor-grab hover:scale-105';
 
-  // Speech bubble styling
+  // Modern annotation card styling
   const bubbleClasses = `
-    relative bg-white bg-opacity-95 border-2 rounded-lg p-2 md:p-3
-    max-w-[200px] min-w-[120px]
+    relative rounded-[8px] p-4
+    max-w-[250px] min-w-[120px]
     transition-all duration-200
     ${isEditing ? 'ring-2 ring-indigo-400' : ''}
   `;
 
-  const borderColor = annotation.color || '#FFFFFF';
-  const tailSize = 12;
+  const borderColor = annotation.color || '#E5E7EB';
 
   return (
     <div
@@ -119,17 +118,23 @@ const Annotation: React.FC<AnnotationProps> = ({
         top: `${bubbleY}%`,
       }}
     >
-      {/* Speech bubble */}
+      {/* Modern annotation card */}
       <div
         className={bubbleClasses}
         style={{
-          borderColor: borderColor,
+          backgroundColor: 'white',
+          border: `1px solid ${borderColor}`,
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+          fontFamily: "'Inter', sans-serif",
+          color: '#374151',
+          fontSize: '14px',
+          lineHeight: '1.5',
         }}
       >
-        {/* Delete button */}
+        {/* Delete button - inside card, top-right with hover circle */}
         <button
           onClick={handleDelete}
-          className="delete-button absolute -top-2 -right-2 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs font-bold shadow-md transition-colors z-40"
+          className="delete-button absolute top-3 right-3 w-6 h-6 text-gray-400 hover:text-red-500 flex items-center justify-center text-xl font-normal transition-all duration-200 rounded-full hover:bg-gray-100 z-40"
           title="Delete annotation"
           aria-label="Delete annotation"
         >
@@ -144,38 +149,61 @@ const Annotation: React.FC<AnnotationProps> = ({
             onChange={(e) => setEditText(e.target.value)}
             onBlur={handleSave}
             onKeyDown={handleKeyDown}
-            className="w-full resize-none outline-none text-sm text-gray-900 bg-transparent border-none p-0"
+            className="w-full resize-none outline-none bg-transparent border-none p-0 pr-8"
+            style={{ 
+              minHeight: '2rem',
+              fontFamily: "'Inter', sans-serif",
+              color: '#374151',
+              fontSize: '14px',
+              lineHeight: '1.5',
+            }}
             rows={Math.min(5, Math.max(2, editText.split('\n').length))}
-            style={{ minHeight: '2rem' }}
             onClick={(e) => e.stopPropagation()}
           />
         ) : (
-          <div className="text-sm text-gray-900 whitespace-pre-wrap break-words">
+          <div 
+            className="whitespace-pre-wrap break-words pr-8"
+            style={{
+              fontFamily: "'Inter', sans-serif",
+              color: '#374151',
+              fontSize: '14px',
+              lineHeight: '1.5',
+            }}
+          >
             {annotation.text || 'Click to edit'}
           </div>
         )}
       </div>
 
-      {/* Tail pointing to anchor */}
+      {/* Seamless tail that merges with the box */}
       <svg
-        className="absolute left-1/2 transform -translate-x-1/2"
+        className="absolute left-1/2 transform -translate-x-1/2 pointer-events-none"
         style={{
-          top: '100%',
-          width: `${tailSize}px`,
-          height: `${tailSize}px`,
+          top: 'calc(100% - 1px)',
+          width: '14px',
+          height: '10px',
         }}
-        viewBox="0 0 12 12"
+        viewBox="0 0 14 10"
       >
+        {/* Smooth symmetric tail with rounded tip */}
         <path
-          d={`M 0 0 L ${tailSize} 0 L ${tailSize / 2} ${tailSize} Z`}
-          fill={borderColor}
-          stroke="white"
+          d="M 0 0 L 5 0 Q 7 0 7 2 Q 7 4 7 6 Q 7 8 5 10 L 0 10 Z"
+          fill="white"
+          stroke={borderColor}
           strokeWidth="1"
         />
         <path
-          d={`M 1 1 L ${tailSize - 1} 1 L ${tailSize / 2} ${tailSize - 1} Z`}
+          d="M 14 0 L 9 0 Q 7 0 7 2 Q 7 4 7 6 Q 7 8 9 10 L 14 10 Z"
           fill="white"
-          fillOpacity="0.95"
+          stroke={borderColor}
+          strokeWidth="1"
+        />
+        {/* Small rounded dot at tip */}
+        <circle
+          cx="7"
+          cy="9"
+          r="2"
+          fill={borderColor}
         />
       </svg>
     </div>
