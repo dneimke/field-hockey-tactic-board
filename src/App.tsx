@@ -9,6 +9,7 @@ import LoadTacticModal from './components/LoadTacticModal';
 import PlaybookModal from './components/PlaybookModal';
 import EditTacticModal from './components/EditTacticModal';
 import HelpAndStorageModal from './components/HelpAndStorageModal';
+import ShareAnimationModal from './components/ShareAnimationModal';
 import HeaderToolbar from './components/HeaderToolbar';
 import {
   INITIAL_RED_TEAM,
@@ -17,7 +18,7 @@ import {
   ANIMATIONS_STORAGE_KEY
 } from './constants';
 import { migrateStorage } from './utils/storageMigration';
-import { Player, Ball, Position, Path, Tactic, BoardState, FieldType, SavedTactic, Equipment, Annotation } from './types';
+import { Player, Ball, Position, Path, Tactic, BoardState, FieldType, SavedTactic, Equipment, Annotation, StoredAnimation } from './types';
 import { v4 as uuidv4 } from 'uuid';
 import { useMediaQuery } from './hooks/useMediaQuery';
 import { useChatSession } from './hooks/useChatSession';
@@ -28,6 +29,7 @@ import { saveTactic as saveTacticToPlaybook, savedTacticToMoves, updateTactic, s
 import { subscribeToAuthState, signOutUser } from './services/authService';
 import { User } from 'firebase/auth';
 import AuthModal from './components/AuthModal';
+import { saveAnimation, accessAnimationViaToken } from './services/animationService';
 
 
 const exportTacticToFile = (tactic: Tactic) => {
@@ -114,7 +116,9 @@ const App: React.FC = () => {
   const [isPlaybookModalOpen, setIsPlaybookModalOpen] = useState(false);
   const [isEditTacticModalOpen, setIsEditTacticModalOpen] = useState(false);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [editingTactic, setEditingTactic] = useState<SavedTactic | null>(null);
+  const [sharingAnimation, setSharingAnimation] = useState<StoredAnimation | null>(null);
   const [overwriteConfirm, setOverwriteConfirm] = useState<{
     message: string;
     onConfirm: () => void;
@@ -141,6 +145,25 @@ const App: React.FC = () => {
       setUser(currentUser);
       setCurrentUserId(currentUser?.uid || null);
 
+      // Handle share link if present
+      if (currentUser) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const shareToken = urlParams.get('share');
+        if (shareToken) {
+          try {
+            const animation = await accessAnimationViaToken(shareToken, currentUser.uid);
+            // Use setTimeout to ensure handleLoadTactic is defined
+            setTimeout(() => {
+              // This will be handled by a ref or we'll call it directly
+              // For now, we'll handle it in a separate effect
+            }, 0);
+          } catch (error) {
+            console.error('Failed to load shared animation:', error);
+            alert('Failed to load shared animation. The link may be invalid or expired.');
+          }
+        }
+      }
+
       // Show auth modal if not authenticated
       if (!currentUser) {
         setIsAuthModalOpen(true);
@@ -151,6 +174,7 @@ const App: React.FC = () => {
 
     return () => unsubscribe();
   }, []);
+
 
   // Handle sign out
   const handleSignOut = useCallback(async () => {
@@ -443,18 +467,32 @@ const App: React.FC = () => {
   }, []);
 
   // Save & Load
-  const writeTacticToStorage = (tactic: Tactic) => {
-    const tacticsJson = localStorage.getItem(ANIMATIONS_STORAGE_KEY);
-    const tactics: Tactic[] = tacticsJson ? JSON.parse(tacticsJson) : [];
-
-    const existingIndex = tactics.findIndex((t) => t.name === tactic.name);
-    if (existingIndex > -1) {
-      tactics[existingIndex] = tactic;
+  const writeTacticToStorage = async (tactic: Tactic, userId: string | null) => {
+    if (userId) {
+      // Save to Firestore
+      const storedAnimation: StoredAnimation = {
+        ...tactic,
+        id: uuidv4(),
+        userId,
+        createdAt: null, // Will be set by service
+        updatedAt: null, // Will be set by service
+        sharedWith: [],
+      };
+      await saveAnimation(userId, storedAnimation);
     } else {
-      tactics.push(tactic);
-    }
+      // Fallback to localStorage for unauthenticated users
+      const tacticsJson = localStorage.getItem(ANIMATIONS_STORAGE_KEY);
+      const tactics: Tactic[] = tacticsJson ? JSON.parse(tacticsJson) : [];
 
-    localStorage.setItem(ANIMATIONS_STORAGE_KEY, JSON.stringify(tactics));
+      const existingIndex = tactics.findIndex((t) => t.name === tactic.name);
+      if (existingIndex > -1) {
+        tactics[existingIndex] = tactic;
+      } else {
+        tactics.push(tactic);
+      }
+
+      localStorage.setItem(ANIMATIONS_STORAGE_KEY, JSON.stringify(tactics));
+    }
   };
 
   const handleSaveTactic = useCallback(
@@ -485,51 +523,159 @@ const App: React.FC = () => {
           fieldType,
         };
 
-        const tacticsJson = localStorage.getItem(ANIMATIONS_STORAGE_KEY);
-        const tactics: Tactic[] = tacticsJson ? JSON.parse(tacticsJson) : [];
-        const existing = tactics.find((t) => t.name === newTactic.name);
+        if (user?.uid) {
+          // Check if animation with same name exists in Firestore
+          try {
+            const { getAllAnimations } = await import('./services/animationService');
+            const { own } = await getAllAnimations(user.uid);
+            const existing = own.find((t) => t.name === newTactic.name);
 
-        if (existing) {
-          setOverwriteConfirm({
-            message: `An animation named "${newTactic.name}" already exists. Do you want to overwrite it?`,
-            onConfirm: () => {
-              writeTacticToStorage(newTactic);
-              setOverwriteConfirm(null);
+            if (existing) {
+              setOverwriteConfirm({
+                message: `An animation named "${newTactic.name}" already exists. Do you want to overwrite it?`,
+                onConfirm: async () => {
+                  try {
+                    const storedAnimation: StoredAnimation = {
+                      ...newTactic,
+                      id: existing.id,
+                      userId: user.uid,
+                      createdAt: existing.createdAt,
+                      updatedAt: null, // Will be set by service
+                      sharedWith: existing.sharedWith,
+                    };
+                    await saveAnimation(user.uid, storedAnimation);
+                    setOverwriteConfirm(null);
+                    setIsSaveModalOpen(false);
+                  } catch (error) {
+                    console.error('Failed to save animation:', error);
+                    alert('Failed to save animation. Please try again.');
+                  }
+                },
+                onCancel: () => setOverwriteConfirm(null),
+              });
+            } else {
+              try {
+                await writeTacticToStorage(newTactic, user.uid);
+                setIsSaveModalOpen(false);
+              } catch (error) {
+                console.error('Failed to save animation:', error);
+                alert('Failed to save animation. Please try again.');
+              }
+            }
+          } catch (error) {
+            console.error('Failed to check existing animations:', error);
+            // Fall through to save anyway
+            try {
+              await writeTacticToStorage(newTactic, user.uid);
               setIsSaveModalOpen(false);
-            },
-            onCancel: () => setOverwriteConfirm(null),
-          });
+            } catch (saveError) {
+              console.error('Failed to save animation:', saveError);
+              alert('Failed to save animation. Please try again.');
+            }
+          }
         } else {
-          writeTacticToStorage(newTactic);
-          setIsSaveModalOpen(false);
+          // Fallback to localStorage for unauthenticated users
+          const tacticsJson = localStorage.getItem(ANIMATIONS_STORAGE_KEY);
+          const tactics: Tactic[] = tacticsJson ? JSON.parse(tacticsJson) : [];
+          const existing = tactics.find((t) => t.name === newTactic.name);
+
+          if (existing) {
+            setOverwriteConfirm({
+              message: `An animation named "${newTactic.name}" already exists. Do you want to overwrite it?`,
+              onConfirm: () => {
+                writeTacticToStorage(newTactic, null);
+                setOverwriteConfirm(null);
+                setIsSaveModalOpen(false);
+              },
+              onCancel: () => setOverwriteConfirm(null),
+            });
+          } else {
+            writeTacticToStorage(newTactic, null);
+            setIsSaveModalOpen(false);
+          }
         }
       }
     },
-    [redTeam, blueTeam, balls, paths, annotations, frames, mode, fieldType, saveModalMode],
+    [redTeam, blueTeam, balls, paths, annotations, frames, mode, fieldType, saveModalMode, user],
   );
 
-  const handleImportTactic = useCallback((onSuccess: () => void) => {
+  const handleImportTactic = useCallback(async (onSuccess: () => void) => {
     importTacticFromFile(
-      (tactic) => {
-        const tacticsJson = localStorage.getItem(ANIMATIONS_STORAGE_KEY);
-        const tactics: Tactic[] = tacticsJson ? JSON.parse(tacticsJson) : [];
-        const existing = tactics.find((t) => t.name === tactic.name);
+      async (tactic) => {
+        if (user?.uid) {
+          // Check if animation with same name exists in Firestore
+          try {
+            const { getAllAnimations } = await import('./services/animationService');
+            const { own } = await getAllAnimations(user.uid);
+            const existing = own.find((t) => t.name === tactic.name);
 
-        if (existing) {
-          setOverwriteConfirm({
-            message: `An animation named "${tactic.name}" already exists. Do you want to overwrite it?`,
-            onConfirm: () => {
-              writeTacticToStorage(tactic);
-              setOverwriteConfirm(null);
+            if (existing) {
+              setOverwriteConfirm({
+                message: `An animation named "${tactic.name}" already exists. Do you want to overwrite it?`,
+                onConfirm: async () => {
+                  try {
+                    const storedAnimation: StoredAnimation = {
+                      ...tactic,
+                      id: existing.id,
+                      userId: user.uid,
+                      createdAt: existing.createdAt,
+                      updatedAt: null,
+                      sharedWith: existing.sharedWith,
+                    };
+                    await saveAnimation(user.uid, storedAnimation);
+                    setOverwriteConfirm(null);
+                    onSuccess();
+                  } catch (error) {
+                    console.error('Failed to import animation:', error);
+                    alert('Failed to import animation. Please try again.');
+                  }
+                },
+                onCancel: () => {
+                  setOverwriteConfirm(null);
+                },
+              });
+            } else {
+              try {
+                await writeTacticToStorage(tactic, user.uid);
+                onSuccess();
+              } catch (error) {
+                console.error('Failed to import animation:', error);
+                alert('Failed to import animation. Please try again.');
+              }
+            }
+          } catch (error) {
+            console.error('Failed to check existing animations:', error);
+            // Fall through to save anyway
+            try {
+              await writeTacticToStorage(tactic, user.uid);
               onSuccess();
-            },
-            onCancel: () => {
-              setOverwriteConfirm(null);
-            },
-          });
+            } catch (saveError) {
+              console.error('Failed to import animation:', saveError);
+              alert('Failed to import animation. Please try again.');
+            }
+          }
         } else {
-          writeTacticToStorage(tactic);
-          onSuccess();
+          // Fallback to localStorage for unauthenticated users
+          const tacticsJson = localStorage.getItem(ANIMATIONS_STORAGE_KEY);
+          const tactics: Tactic[] = tacticsJson ? JSON.parse(tacticsJson) : [];
+          const existing = tactics.find((t) => t.name === tactic.name);
+
+          if (existing) {
+            setOverwriteConfirm({
+              message: `An animation named "${tactic.name}" already exists. Do you want to overwrite it?`,
+              onConfirm: () => {
+                writeTacticToStorage(tactic, null);
+                setOverwriteConfirm(null);
+                onSuccess();
+              },
+              onCancel: () => {
+                setOverwriteConfirm(null);
+              },
+            });
+          } else {
+            writeTacticToStorage(tactic, null);
+            onSuccess();
+          }
         }
       },
       (error) => {
@@ -537,10 +683,10 @@ const App: React.FC = () => {
         console.error(`Error importing tactic: ${error}`);
       },
     );
-  }, []);
+  }, [user]);
 
   const handleLoadTactic = useCallback(
-    (tactic: Tactic) => {
+    (tactic: Tactic | StoredAnimation) => {
       setPaths(tactic.paths);
       // Restore annotations if present
       setAnnotations(tactic.annotations || []);
@@ -573,6 +719,33 @@ const App: React.FC = () => {
     },
     [setBoardState],
   );
+
+  // Handle share link when user is authenticated (after handleLoadTactic is defined)
+  const shareLinkProcessed = useRef(false);
+  useEffect(() => {
+    const loadSharedAnimation = async () => {
+      if (user && !shareLinkProcessed.current) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const shareToken = urlParams.get('share');
+        if (shareToken) {
+          shareLinkProcessed.current = true;
+          try {
+            const animation = await accessAnimationViaToken(shareToken, user.uid);
+            handleLoadTactic(animation);
+            // Clean up URL
+            window.history.replaceState({}, '', window.location.pathname);
+          } catch (error) {
+            console.error('Failed to load shared animation:', error);
+            alert('Failed to load shared animation. The link may be invalid or expired.');
+          }
+        }
+      }
+    };
+
+    if (user) {
+      loadSharedAnimation();
+    }
+  }, [user, handleLoadTactic]);
 
   const transformPositionForPortrait = useCallback((position: Position): Position => {
     // Corresponds to a 90-degree clockwise rotation of the field content.
@@ -890,6 +1063,18 @@ const App: React.FC = () => {
         onLoad={handleLoadTactic}
         onExport={exportTacticToFile}
         onImport={handleImportTactic}
+        onShare={(animation) => {
+          setSharingAnimation(animation);
+          setIsShareModalOpen(true);
+        }}
+      />
+      <ShareAnimationModal
+        isOpen={isShareModalOpen}
+        onClose={() => {
+          setIsShareModalOpen(false);
+          setSharingAnimation(null);
+        }}
+        animation={sharingAnimation}
       />
       <PlaybookModal
         isOpen={isPlaybookModalOpen}

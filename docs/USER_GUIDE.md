@@ -52,6 +52,35 @@ You can quickly organize players into zones for training exercises. The system w
 | **DPC** | "Setup defensive PC 2-2 structure" |
 | **Drill** | "4v2 in attacking 25" |
 
+## Sharing Animations
+
+When you're signed in, you can share your animations with teammates and access them from any device.
+
+### How to Share
+
+1. **Open Load Animation**: Click "Load" in the toolbar to open your saved animations
+2. **Click Share**: Find the animation you want to share and click the "Share" button
+3. **Copy the Link**: A shareable link will be generated. Click "Copy Link" to copy it to your clipboard
+4. **Send to Teammates**: Share the link via email, team chat, or any messaging platform
+
+### Receiving Shared Animations
+
+1. **Open the Link**: When someone shares an animation link with you, click it
+2. **Sign In**: If you're not already signed in, you'll be prompted to sign in
+3. **Access the Animation**: The shared animation will automatically load and appear in your "Shared With Me" section
+
+### Managing Shares
+
+- **View Shared Animations**: In the "Load Animation" menu, use the filter dropdown to view "Shared With Me"
+- **Remove Access**: Animation owners can remove share access from the Share modal
+- **Regenerate Links**: Owners can regenerate share links to revoke old links and create new ones
+
+### Storage & Sync
+
+- **Cloud Storage**: When signed in, animations are stored in the cloud and sync across all your devices
+- **Local Storage**: When not signed in, animations are stored locally on your device only
+- **Export for Backup**: Use the "Export" button to save animations as JSON files for backup
+
 ## The Living Playbook
 
 The Living Playbook allows you to save, organize, and reuse tactical configurations. When you save a tactic, the system will automatically use your saved version instead of AI-generated positions when you enter matching commands.

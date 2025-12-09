@@ -62,6 +62,15 @@ export interface Tactic {
   fieldType?: FieldType;
 }
 
+export interface StoredAnimation extends Tactic {
+  id: string;
+  userId: string;
+  createdAt: any; // Firestore Timestamp
+  updatedAt: any; // Firestore Timestamp
+  sharedWith: string[];
+  shareToken?: string;
+}
+
 export interface SavedTactic {
   id: string;
   name: string;

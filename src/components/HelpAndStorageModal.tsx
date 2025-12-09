@@ -59,15 +59,18 @@ const HelpAndStorageModal: React.FC<HelpAndStorageModalProps> = ({ isOpen, onClo
               </ul>
 
               <div className="mt-4 pt-4 border-t border-gray-600">
-                <div className="flex items-center gap-2 text-amber-400 text-sm font-bold mb-1">
+                <div className="flex items-center gap-2 text-blue-400 text-sm font-bold mb-1">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
                   </svg>
-                  <span>Local Storage Only</span>
+                  <span>Cloud Synced (when signed in)</span>
                 </div>
                 <p className="text-xs text-gray-400 leading-relaxed">
-                  Stored on this specific device/browser. <br/>
-                  <span className="text-amber-400">⚠️ Lost if cache is cleared!</span>
+                  Available on any device when you log in. <br/>
+                  <span className="text-blue-400">✓ Share with teammates</span>
+                </p>
+                <p className="text-xs text-amber-400 mt-2 leading-relaxed">
+                  ⚠️ When not signed in, animations are stored locally only and may be lost if cache is cleared.
                 </p>
               </div>
             </div>
@@ -107,17 +110,49 @@ const HelpAndStorageModal: React.FC<HelpAndStorageModalProps> = ({ isOpen, onClo
             </div>
           </div>
 
-          {/* Warning / Export Tip */}
-          <div className="bg-amber-900/20 border border-amber-800/50 rounded-lg p-4 flex gap-3 items-start">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          {/* Sharing Section */}
+          <div className="bg-purple-900/20 border border-purple-800/50 rounded-lg p-4 space-y-3">
+            <div className="flex items-center gap-2 text-purple-400 font-bold">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+              </svg>
+              <h3 className="text-lg">Sharing Animations</h3>
+            </div>
+            <div className="text-sm text-gray-300 space-y-2">
+              <p>
+                When signed in, you can share your animations with teammates using shareable links.
+              </p>
+              <div className="space-y-1.5 pl-4">
+                <div className="flex gap-2">
+                  <span className="text-purple-400 font-bold">1.</span>
+                  <span>Open &quot;Load Animation&quot; and click <span className="inline-flex items-center px-1.5 py-0.5 bg-purple-600 rounded text-xs font-semibold text-white">Share</span> on any animation you own</span>
+                </div>
+                <div className="flex gap-2">
+                  <span className="text-purple-400 font-bold">2.</span>
+                  <span>Copy the shareable link and send it to your teammates</span>
+                </div>
+                <div className="flex gap-2">
+                  <span className="text-purple-400 font-bold">3.</span>
+                  <span>When they open the link and sign in, the animation will appear in their &quot;Shared With Me&quot; section</span>
+                </div>
+              </div>
+              <p className="text-xs text-gray-400 mt-2">
+                Shared animations are read-only for recipients. Only you can edit or delete animations you created.
+              </p>
+            </div>
+          </div>
+
+          {/* Export Tip */}
+          <div className="bg-blue-900/20 border border-blue-800/50 rounded-lg p-4 flex gap-3 items-start">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
             <div className="text-sm text-gray-300">
-              <p className="font-bold text-amber-400 mb-1">Don&apos;t lose your animations!</p>
+              <p className="font-bold text-blue-400 mb-1">Export for Backup</p>
               <p>
-                Because complex animations are only saved locally, we recommend using the 
+                Use the 
                 <span className="inline-flex items-center px-2 py-0.5 mx-1 bg-gray-700 rounded text-xs font-mono text-white border border-gray-600">Export</span> 
-                button in the &quot;Load Animation&quot; menu to back them up to your computer as a file.
+                button in the &quot;Load Animation&quot; menu to save animations as JSON files for backup or offline use.
               </p>
             </div>
           </div>

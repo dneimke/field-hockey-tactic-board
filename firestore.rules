@@ -24,6 +24,70 @@ service cloud.firestore {
           && request.auth.uid == userId
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'tags', 'type', 'metadata', 'updatedAt']);
       }
+      
+      // Animations collection
+      match /animations/{animationId} {
+        // Owner has full access
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+        
+        // Shared users can read
+        allow read: if request.auth != null 
+          && request.auth.uid != userId
+          && request.auth.uid in resource.data.sharedWith;
+        
+        // Allow reading if animation has a shareToken (shareable via link)
+        // This allows users to access animations via share link before being added to sharedWith
+        allow read: if request.auth != null 
+          && request.auth.uid != userId
+          && resource.data.shareToken != null;
+        
+        // Validate animation data structure on create (make fields optional for flexibility)
+        allow create: if request.auth != null 
+          && request.auth.uid == userId
+          && request.resource.data.userId == userId
+          && request.resource.data.id is string
+          && request.resource.data.name is string
+          && request.resource.data.frames is list
+          && request.resource.data.paths is list;
+        
+        // Only owner can update, and can only modify specific fields
+        allow update: if request.auth != null 
+          && request.auth.uid == userId
+          && (
+            // Owner can update animation content
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'frames', 'paths', 'annotations', 'fieldType', 'updatedAt', 'shareToken'])
+            ||
+            // Owner can modify sharedWith array
+            (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sharedWith', 'updatedAt'])
+             && request.resource.data.sharedWith is list)
+          );
+      }
+    }
+    
+    // Collection group query support for animations (allows querying across all users)
+    // This is needed for getSharedAnimations to work
+    match /{path=**}/animations/{animationId} {
+      // Allow reading if user is in sharedWith array
+      allow read: if request.auth != null 
+        && request.auth.uid in resource.data.sharedWith;
+      
+      // Also allow reading if animation has a shareToken (for share link access)
+      allow read: if request.auth != null 
+        && resource.data.shareToken != null;
+    }
+    
+    // Share tokens collection - anyone can read to validate, only owners can create/delete
+    match /shareTokens/{token} {
+      // Anyone authenticated can read (to validate token)
+      allow read: if request.auth != null;
+      
+      // Only the owner can create/delete tokens
+      allow create: if request.auth != null 
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.keys().hasAll(['animationId', 'ownerId', 'createdAt']);
+      
+      allow delete: if request.auth != null 
+        && resource.data.ownerId == request.auth.uid;
     }
     
     // Deny all other access
